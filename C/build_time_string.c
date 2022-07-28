@@ -39,13 +39,6 @@ int main (){
 
     strncat(day, date+4, 2);        // day
 
-    
-    ////// for test
-    printf("date: %s\n", date);
-    printf("time: %s\n", time_);
-    printf("year: %s\n", year);
-    printf("month: %s\n", month);
-    printf("day: %s\n", day);
 
 //      format and print
     strcat(build_time, year);
