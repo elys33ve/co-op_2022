@@ -7,9 +7,8 @@
 // should be a function that returns formated string
 
 
-char * format_date_time(char *date, char *time, char str[]){ 
+void format_date_time(char *date, char *time, char *str){ 
     char months[12][4] = {"jan\0","feb\0","mar\0","apr\0","may\0","jun\0","jul\0","aug\0","sep\0","oct\0","nov\0","dec\0"};
-
     char temp[3];
     int i;
     
@@ -40,21 +39,19 @@ char * format_date_time(char *date, char *time, char str[]){
     day[2] = 0;
 
 //      format
-    strcpy(str, year); str[4] = ':';
-    strcat(str, month); str[7] = ':';
-    strcat(str, day); str[10] = ':';
+    strcpy(str, year); strcat(str, ":");
+    strcat(str, month); strcat(str, ":");
+    strcat(str, day); strcat(str, ":");
     strcat(str, time);
-
-    return str;
 }
- 
+
 
 int main (){
     char *date = "Sep 01 9876";     // __DATE__
     char *time = "12:12:32";        // __TIME__
-    char *build_time = malloc(20);
+    char build_time[20];                  // char *build_time = kmalloc(20,GFP_KERNEL);   // for kernel
 
-    build_time = format_date_time(date, time, build_time);
+    format_date_time(date, time, build_time);
 
     printf("%s\n", build_time);
 
