@@ -2,20 +2,19 @@
 #include <ctype.h>
 #include <string.h>
 
-// will use __DATE__ and __TIME__ preprocessor directives but manipulate the strings to be yyyy:mm:dd,hh:mm:ss format
-
+// will use __DATE__ and __TIME__ preprocessor directives but manipulate the strings to be yyyy:mm:dd:hh:mm:ss format
 
 int main (){
     char months[12][4] = {"jan\0","feb\0","mar\0","apr\0","may\0","jun\0","jul\0","aug\0","sep\0","oct\0","nov\0","dec\0"};
 
     char *date = "Jul 16 2022\0";
-    char time_[] = "20:12:42";
-    char build_time[20] = "";
+    char *time = "20:12:42";
+    char str[20] = "";
 
     char temp[3] = "";
     int i;
     
-    char year[5] = "";          // delete these, add straight to build_time
+    char year[5] = "";
     char month[4] = "";
     char day[3] = "";
 
@@ -41,15 +40,12 @@ int main (){
 
 
 //      format and print
-    strcat(build_time, year);
-    build_time[4] = ':';
-    strcat(build_time, month);
-    build_time[7] = ':';
-    strcat(build_time, day);
-    build_time[10] = ',';
-    strcat(build_time, time_);
-
-    printf("%s\n", build_time);
+    strcat(str, year); str[4] = ':';
+    strcat(str, month); str[7] = ':';
+    strcat(str, day); str[10] = ':';
+    strcat(str, time);
+    
+    printf("%s\n", str);
 
     return 0;
 }
