@@ -9,22 +9,25 @@ int main (){
 
     char *date = "Jul 16 2022\0";
     char *time = "20:12:42";
-    char str[20] = "";
+    char str[20];
 
-    char temp[3] = "";
+    char temp[3];
     int i;
     
-    char year[5] = "";
-    char month[4] = "";
-    char day[3] = "";
+    char year[5];
+    char month[4];
+    char day[3];
 
 //      get date
-    strncat(year, date+7, 5);       // year
+    strncpy(year, date+7, 5);       // year
 
-    strncat(month, date, 3);        // month
+    strncpy(month, date, 3);        // month
+    month[3] = 0;
     month[0] = tolower(month[0]);
+
+
     for (i=0;i<12;i++){
-        strncpy(temp, &months[i][0], 3);
+        strncpy(temp, months[i], 4);
         if (strcmp(temp, month) == 0){
             if (i<9){
                 sprintf(month, "0%d", i+1);
@@ -36,15 +39,22 @@ int main (){
         }
     }
 
-    strncat(day, date+4, 2);        // day
+    strncpy(day, date+4, 2);        // day
+    day[2] = 0;
 
+    
+    printf("date: %s\n", date);
+    printf("time: %s\n", time);
+    printf("year: %s\n", year);
+    printf("month: %s\n", month);
+    printf("day: %s\n", day);
 
 //      format and print
-    strcat(str, year); str[4] = ':';
-    strcat(str, month); str[7] = ':';
-    strcat(str, day); str[10] = ':';
+    strcpy(str, year); str[4] = ':';
+    strcat(str, month); str[8] = ':';
+    strcat(str, day); str[11] = ':';
     strcat(str, time);
-    
+
     printf("%s\n", str);
 
     return 0;
