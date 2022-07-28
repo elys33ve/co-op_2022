@@ -8,9 +8,7 @@
 
 
 char * format_date_time(char *date, char *time, char str[]){ 
-    //char *date; char *time;
     char months[12][4] = {"jan\0","feb\0","mar\0","apr\0","may\0","jun\0","jul\0","aug\0","sep\0","oct\0","nov\0","dec\0"};
-    //char str[20];
 
     char temp[3];
     int i;
@@ -41,7 +39,7 @@ char * format_date_time(char *date, char *time, char str[]){
     strncpy(day, date+4, 2);        // day
     day[2] = 0;
 
-//      format and print
+//      format
     strcpy(str, year); str[4] = ':';
     strcat(str, month); str[7] = ':';
     strcat(str, day); str[10] = ':';
@@ -52,8 +50,8 @@ char * format_date_time(char *date, char *time, char str[]){
  
 
 int main (){
-    char *date = "Sep 01 9876";
-    char *time = "12:12:32";
+    char *date = "Sep 01 9876";     // __DATE__
+    char *time = "12:12:32";        // __TIME__
     char *build_time = malloc(20);
 
     build_time = format_date_time(date, time, build_time);
