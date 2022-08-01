@@ -43,14 +43,6 @@ void format_date_time(char *date, char *time, char *str){
     }
 
 
-///////////////////////// test
-    printf("date: %s\n", date);
-    printf("time: %s\n", time);
-    printf("year: %s\n", year);
-    printf("month: %s\n", month);
-    printf("day: %s\n", day);
-
-
 //      format
     strcpy(str, year); strcat(str, ":");
     strcat(str, month); strcat(str, ":");
@@ -70,3 +62,19 @@ int main (){
 
     return 0;
 }
+
+
+/*      for drivers:
+
+static ssize_t build_time_show(struct device *dev, struct device_attribute *attr,
+					char *buf) {
+	char build_time[20];
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wdate-time"
+		format_date_time(__DATE__, __TIME__, build_time);
+	#pragma GCC diagnostic pop
+	return sprintf(buf, "%s\n",build_time);
+}
+static	DEVICE_ATTR_RO(build_time);
+
+*/
