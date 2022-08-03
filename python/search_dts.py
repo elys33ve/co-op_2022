@@ -52,7 +52,11 @@ def get_lines (search_str, file=dts):       # (search str, file)
 def show_lines (lines, file=dts):   # (list of lines to print, file)
     l = open(file, 'r').readlines()
     
-    if type(lines) == type(1):              # single line (int)
+    if type(lines) == type("string"):       #yes i know there are better ways im fizign ahtings rn
+        lines = get_lines(lines, file)
+        for i in range(len(lines)):
+            print(l[lines[i]])
+    elif type(lines) == type(1):              # single line (int)
         print(l[lines])
     else:                                   # multiple lines (list)
         for i in range(len(lines)):
@@ -101,3 +105,37 @@ def get_channels (file=dts):
         print(f"\tchannel_in: {channels[ch_num[i]][0]}")
         print(f"\tchannel_out: {channels[ch_num[i]][1]}")
         print(f"\tline_test: {channels[ch_num[i]][2]}")
+
+
+
+### order and return clocktrack                 ----------- it works for now but fix later, also make general function for dictionary (also this one doesnt order)
+def get_clocktrack (file=dts):
+    l = open(file, 'r').readlines()
+    clocktrack = {}                         # ordered dictionary to return
+    reg = []
+
+    ch_lines = get_lines("clocktrack@")        # get start line number for each channel info
+    num = len(ch_lines)
+
+    for i in range(num):
+        for j in range(25):
+            if "reg =" in l[ch_lines[i] + j]:
+                reg.append(l[ch_lines[i] + j].replace("reg = ", "").replace('<','').replace('>;', '').strip())
+                break
+
+    for i in range(num):
+        reg[i] = reg[i].split(" ")
+        reg_num = len(reg[i])   
+        for j in range(reg_num):
+            if len(reg[i][j]) >= len(max(reg[i], key=len)):
+                reg[i].append(reg[i][j])
+        del reg[i][0:reg_num]
+
+    for i in range(num):
+        clocktrack[i] = reg[i]
+
+    for i in range(num):
+        print(f"ch{i}")
+        print(f"\tclocktrack_address: {clocktrack[i][0]}")
+
+
