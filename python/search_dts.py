@@ -106,15 +106,16 @@ def get_channels (file=dts):
         print(f"\tchannel_out: {channels[ch_num[i]][1]}")
         print(f"\tline_test: {channels[ch_num[i]][2]}")
 
-
+#---------- merge these two functions (channel and get things)
+# have them return dictionary, and maybe seperate print function idky
 
 ### order and return clocktrack                 ----------- it works for now but fix later, also make general function for dictionary (also this one doesnt order)
-def get_clocktrack (file=dts):
+def get_things (s="clocktrack", file=dts):
     l = open(file, 'r').readlines()
-    clocktrack = {}                         # ordered dictionary to return
+    things = {}                         # ordered dictionary to return
     reg = []
 
-    ch_lines = get_lines("clocktrack@")        # get start line number for each channel info
+    ch_lines = get_lines(f"{s}@")        # get start line number for each channel info
     num = len(ch_lines)
 
     for i in range(num):
@@ -132,10 +133,10 @@ def get_clocktrack (file=dts):
         del reg[i][0:reg_num]
 
     for i in range(num):
-        clocktrack[i] = reg[i]
+        things[i] = reg[i]
 
-    for i in range(num):
+    for i in range(num):                            # probably change the outputs to make more sense too
         print(f"ch{i}")
-        print(f"\tclocktrack_address: {clocktrack[i][0]}")
+        print(f"\t{s}_address: {things[i][0]}")
 
 
