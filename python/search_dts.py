@@ -5,6 +5,9 @@
 # --- still need to review some parameters  and first functions cuz idr what i was doing w those ---
 
 ##### file stuff for testing
+from cmath import inf
+
+
 txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff
 dts = "/home/fiona/dt.dts"                  # the actual file
 f = open(dts, 'r')                          # --- defult file to open atm ---
@@ -15,33 +18,29 @@ f = open(dts, 'r')                          # --- defult file to open atm ---
 
 
 ### return bool for if str exists in file
-def get_exist (search_str, file=dts):         # (search str, file)
+def get_exist (search_str, file=dts):       # (search str, file)
     o = open(file, 'r')
-    idx = 0
+    idx = 0                 # current index
     exist = False
 
-    for line in o:
+    for line in o:          # if string exists in file, return True
         idx += 1
         if search_str in line:
             exist = True
             break
-
     return exist
 
 
 ### return list of line numbers for each search str occurence
-def get_lines (search_str, file=dts):         # (search str, file)
+def get_lines (search_str, file=dts):       # (search str, file)
     o = open(file, 'r')
     idx = 0                 # current index
-    flag = 0                # num of appearences
     line_list = []          # lines str appears
 
     for line in o:
         idx += 1
         if search_str in line:
-            flag += 1                   # flag appearence
-            line_list.append(idx-1)     # add line num to list
-    
+            line_list.append(idx-1)         # add line num to list
     return line_list
 
 
@@ -61,43 +60,44 @@ def show_lines (lines, file=dts):   # (list of lines to print, file)
 
 
 
-
-### print channels
-def show_channels (file=dts):               # (search str, file)
+### order and return channels
+def get_channels (file=dts):
     l = open(file, 'r').readlines()
+    channels = {}                       # ordered dictionary to return
+    reg = []
 
-    line_num = get_lines("channel@")        # list of line numbers
-    ch_num = len(line_num)                  # number of channels
+    ch_lines = get_lines("channel@")        # get start line number for each channel info
+    ch_num = get_lines("channel_number")    # channel numbers (line nums)
 
-    channels, reg = [], []                  # channels and registers
-    ch_in, ch_out, ln_tst = [], [], []      # channel in, channel out, and line test
+    num = len(ch_lines)                     # number of channels
 
 
-    for i in line_num:              # format channel names
-        channels.append(l[i].replace('{',' ').strip())
+    for i in range(num):            # get ch numbers and register lines
+        ch_num[i] = int(l[ch_num[i]].replace("channel_number = <", "").replace(">;", "").strip(), 0)
 
-    for i in range(ch_num):         # add register lines to list
-        for j in range(10):                                 # 10 lines under channel@'s
-            if "reg =" in l[line_num[i] + j]:
-                reg.append(l[line_num[i] + j].replace("reg = ", "").replace('<','').replace('>;', '').strip())
+
+        for j in range(10):                         # look 10 lines after 'channel@'
+            if "reg =" in l[ch_lines[i] + j]:
+                reg.append(l[ch_lines[i] + j].replace("reg = ", "").replace('<','').replace('>;', '').strip())
                 break
     
-    for i in range(ch_num):         # get in, out, and line test from reg
+    for i in range(num):            # format reg into [ch_in, ch_out, ln_test]
         reg[i] = reg[i].split(" ")
-        reg_num = len(reg[i])
-        for j in range(reg_num):                            # separate addresses
+        reg_num = len(reg[i])   
+        for j in range(reg_num):                    # separate addresses
             if len(reg[i][j]) >= len(max(reg[i], key=len)):
                 reg[i].append(reg[i][j])
         del reg[i][0:reg_num]
-        ch_in.append(reg[i][0])                             # add to in, out, and line test lists
-        ch_out.append(reg[i][1])
-        ln_tst.append(reg[i][2])
 
-    for i in range(ch_num):         # print channel info
-        print(f"ch{i}:")
-        print(f"\tchannel_in: {ch_in[i]}")
-        print(f"\tchannel_out: {ch_out[i]}")
-        print(f"\tline_test: {ln_tst[i]}\n")
+    for i in range (num):           # get order and add to dict
+        idx = ch_num.index(min(ch_num))
+        channels[ch_num[idx]] = reg[idx]
+        ch_num[idx] = max(ch_num) + 10
 
+    ch_num = list(channels)                 # dictionary keys list (ch numbers ordered)
 
-
+    for i in range(num):
+        print(f"ch{ch_num[i]}")
+        print(f"\tchannel_in: {channels[ch_num[i]][0]}")
+        print(f"\tchannel_out: {channels[ch_num[i]][1]}")
+        print(f"\tline_test: {channels[ch_num[i]][2]}")
