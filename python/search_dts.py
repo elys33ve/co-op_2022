@@ -1,21 +1,14 @@
 # functions for searching and displaying info from dts file
 # eventually something like "dts-parser <file> <search str>" to do stuff
 
-
 # --- still need to review some parameters  and first functions cuz idr what i was doing w those ---
 
 ##### file stuff for testing
-from cmath import inf
-
-
 txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff
 dts = "/home/fiona/dt.dts"                  # the actual file
 f = open(dts, 'r')                          # --- defult file to open atm ---
         
-
-
 ##################################################################
-
 
 ### return bool for if str exists in file
 def get_exist (search_str, file=dts):       # (search str, file)
@@ -42,7 +35,6 @@ def get_lines (search_str, file=dts):       # (search str, file)
         if search_str in line:
             line_list.append(idx-1)         # add line num to list
     return line_list
-
 
 
 
@@ -74,6 +66,7 @@ def show_info (things, s, file=dts):       # (dictionary, list of strings, file)
         for j in range(len(things[keys[i]])):
             print(f"\t{s[j+2]}: {things[keys[j]][j]}")
 
+################################################################## search and order functions
 
 ### order and return channels
 def get_channels (file=dts):
