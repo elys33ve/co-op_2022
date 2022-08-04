@@ -63,6 +63,17 @@ def show_lines (lines, file=dts):   # (list of lines to print, file)
             print(l[lines[i]])
 
 
+### print out info
+def show_info (things, s, file=dts):       # (dictionary, list of strings, file)
+    l = open(file, 'r').readlines()                     # ^ ["channel", "ch", "channel_in", "channel_out", "line_test"]
+    num = len(things)                                   # ^ [keyword/title, output title each?, outputs]
+    keys = list(things)
+
+    for i in range(num):
+        print(f"{s[1]}{i}:")
+        for j in range(len(things[keys[i]])):
+            print(f"\t{s[j+2]}: {things[keys[j]][j]}")
+
 
 ### order and return channels
 def get_channels (file=dts):
@@ -98,13 +109,19 @@ def get_channels (file=dts):
         channels[ch_num[idx]] = reg[idx]
         ch_num[idx] = max(ch_num) + 10
 
-    ch_num = list(channels)                 # dictionary keys list (ch numbers ordered)
+    outwords = ["channel", "ch", "channel_in","channel_out", "line_test"]
+        ##### ----  REPLACE WITH [keyword, "ch" or keyword[0:2], and find the list of names in the dts file for the rest]
 
+    show_info(channels, outwords, file)
+
+"""         ^^ should work instead
+    ch_num = list(channels)                 # dictionary keys list (ch numbers ordered)
     for i in range(num):
         print(f"ch{ch_num[i]}")
         print(f"\tchannel_in: {channels[ch_num[i]][0]}")
         print(f"\tchannel_out: {channels[ch_num[i]][1]}")
         print(f"\tline_test: {channels[ch_num[i]][2]}")
+"""
 
 #---------- merge these two functions (channel and get things)
 # have them return dictionary, and maybe seperate print function idky
@@ -135,8 +152,13 @@ def get_things (s="clocktrack", file=dts):
     for i in range(num):
         things[i] = reg[i]
 
+    outwords = [s, "ch?for now", "address: (for now)"]
+    # change those later
+
+    show_info(things, outwords, file)
+
+"""
     for i in range(num):                            # probably change the outputs to make more sense too
         print(f"ch{i}")
-        print(f"\t{s}_address: {things[i][0]}")
-
-
+        print(f"\t{s}_address: {things[i][0]}") 
+"""
