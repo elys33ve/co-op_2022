@@ -1,157 +1,121 @@
 # functions for searching and displaying info from dts file
 # eventually something like "dts-parser <file> <search str>" to do stuff
 
-# --- still need to review some parameters  and first functions cuz idr what i was doing w those ---
-
 ##### file stuff for testing
-txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff
+txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff rn
 dts = "/home/fiona/dt.dts"                  # the actual file
-f = open(dts, 'r')                          # --- defult file to open atm ---
-        
-##################################################################
 
-### return bool for if str exists in file
-def get_exist (search_str, file=dts):       # (search str, file)
+
+#############################################################################################
+
+### return list of line numbers for each search str word occurence
+def get_lines (word, file=dts):       # (search str, file)
     o = open(file, 'r')
     idx = 0                 # current index
-    exist = False
-
-    for line in o:          # if string exists in file, return True
-        idx += 1
-        if search_str in line:
-            exist = True
-            break
-    return exist
-
-
-### return list of line numbers for each search str occurence
-def get_lines (search_str, file=dts):       # (search str, file)
-    o = open(file, 'r')
-    idx = 0                 # current index
-    line_list = []          # lines str appears
+    line_list = []          # line numbers str appears
 
     for line in o:
         idx += 1
-        if search_str in line:
+        if word in line:
             line_list.append(idx-1)         # add line num to list
     return line_list
 
 
-
-##################################################################
-
 ### print line(s) by line number
-def show_lines (lines, file=dts):   # (list of lines to print, file)
+def show_lines (lines, file=dts):       # (list of lines to print, file)
     l = open(file, 'r').readlines()
     
-    if type(lines) == type("string"):       #yes i know there are better ways im fizign ahtings rn
+    if type(lines) == str:                  # if arg is string --> search for word, then print
         lines = get_lines(lines, file)
         for i in range(len(lines)):
             print(l[lines[i]])
-    elif type(lines) == type(1):              # single line (int)
+    elif type(lines) == type(1):            # if single line (int)
         print(l[lines])
-    else:                                   # multiple lines (list)
+    else:                                   # if multiple lines (list)
         for i in range(len(lines)):
             print(l[lines[i]])
 
 
-### print out info
-def show_info (things, s, file=dts):       # (dictionary, list of strings, file)
-    l = open(file, 'r').readlines()                     # ^ ["channel", "ch", "channel_in", "channel_out", "line_test"]
-    num = len(things)                                   # ^ [keyword/title, output title each?, outputs]
-    keys = list(things)
+### print dictionary info
+def show_info(things, file=dts):        # (dictionary from get_things, file)
+    l = open(file, 'r').readlines()
 
-    for i in range(num):
-        print(f"{s[1]}{i}:")
+    length = len(things)            # number of items in dictionary      
+    keys = list(things)             # list of dictionary keys
+    val_keys = []                   
+
+    for i in range(length):         # format and print dict
+        print(f"{keys[i]}:")
+        val_dict = things[keys[i]]              # current nested dict
+        val_keys = list(val_dict)               # list of nested dictionary keys
         for j in range(len(things[keys[i]])):
-            print(f"\t{s[j+2]}: {things[keys[j]][j]}")
-
-################################################################## search and order functions
-
-### order and return channels
-def get_channels (file=dts):
-    l = open(file, 'r').readlines()
-    channels = {}                       # ordered dictionary to return
-    reg = []
-
-    ch_lines = get_lines("channel@")        # get start line number for each channel info
-    ch_num = get_lines("channel_number")    # channel numbers (line nums)
-
-    num = len(ch_lines)                     # number of channels
+            print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")      # print info / vals
 
 
-    for i in range(num):            # get ch numbers and register lines
-        ch_num[i] = int(l[ch_num[i]].replace("channel_number = <", "").replace(">;", "").strip(), 0)
 
 
-        for j in range(10):                         # look 10 lines after 'channel@'
-            if "reg =" in l[ch_lines[i] + j]:
-                reg.append(l[ch_lines[i] + j].replace("reg = ", "").replace('<','').replace('>;', '').strip())
-                break
-    
-    for i in range(num):            # format reg into [ch_in, ch_out, ln_test]
-        reg[i] = reg[i].split(" ")
-        reg_num = len(reg[i])   
-        for j in range(reg_num):                    # separate addresses
-            if len(reg[i][j]) >= len(max(reg[i], key=len)):
-                reg[i].append(reg[i][j])
-        del reg[i][0:reg_num]
+#############################################################################################
 
-    for i in range (num):           # get order and add to dict
-        idx = ch_num.index(min(ch_num))
-        channels[ch_num[idx]] = reg[idx]
-        ch_num[idx] = max(ch_num) + 10
+### find, order, return dictionary of things
+### ("channel", "clocktrack", "dma_central", "tmoip_system")
+def get_things (word, file=dts):            # (search term, file)
+    l = open(file, 'r').readlines()     # get lines by line number
 
-    outwords = ["channel", "ch", "channel_in","channel_out", "line_test"]
-        ##### ----  REPLACE WITH [keyword, "ch" or keyword[0:2], and find the list of names in the dts file for the rest]
+    things = {}                         # dictionary of things to return
+    # {<word><number order> : {<reg name 1> : <number/address>, <reg name 2> : <number/address>}}
+    # ex (channel): {"ch0" : {"channel_in" : 0x800000, "channel_out" : 0x0302399, "line_test" : 0x0293443}}
+    things_vals = {}                    # nested dictionary for things
+    reg = []                            # nested lists of register numbers for each driver
 
-    show_info(channels, outwords, file)
+    lines = get_lines(f"{word}@")               # get starting lines
+    num_order = get_lines(f"{word}_number")     # get numbers for dictionary order
+    length = len(lines)                         # number of dictionary items
+    reg_name = []                               # register names (if exist)
 
-"""         ^^ should work instead
-    ch_num = list(channels)                 # dictionary keys list (ch numbers ordered)
-    for i in range(num):
-        print(f"ch{ch_num[i]}")
-        print(f"\tchannel_in: {channels[ch_num[i]][0]}")
-        print(f"\tchannel_out: {channels[ch_num[i]][1]}")
-        print(f"\tline_test: {channels[ch_num[i]][2]}")
-"""
 
-#---------- merge these two functions (channel and get things)
-# have them return dictionary, and maybe seperate print function idky
+    # get and format lines
+    for i in range(length):                     # get number / order, registers, and reg names
+        if len(num_order) <= 0:                         # if no order, generate list 0 to length
+            num_order[i] = i
+        else:                                           # if numbers exist, format, get integers in dec
+            num_order[i] = l[num_order[i]].replace(f"{word}_number = <", "").replace(">;", "").strip()
+            num_order[i] = int(num_order[i], 0)
 
-### order and return clocktrack                 ----------- it works for now but fix later, also make general function for dictionary (also this one doesnt order)
-def get_things (s="clocktrack", file=dts):
-    l = open(file, 'r').readlines()
-    things = {}                         # ordered dictionary to return
-    reg = []
+        for j in range(25):                             # get reg address line and reg names
+            if "reg =" in l[lines[i] + j]:
+                reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
+            if "reg-names" in l[lines[i] +j]:
+                reg_name = l[lines[i] + j]
+            
 
-    ch_lines = get_lines(f"{s}@")        # get start line number for each channel info
-    num = len(ch_lines)
-
-    for i in range(num):
-        for j in range(25):
-            if "reg =" in l[ch_lines[i] + j]:
-                reg.append(l[ch_lines[i] + j].replace("reg = ", "").replace('<','').replace('>;', '').strip())
-                break
-
-    for i in range(num):
-        reg[i] = reg[i].split(" ")
-        reg_num = len(reg[i])   
+    # split reg lines and replace with necessary values
+    for i in range(length):
+        reg[i] = reg[i].split(" ")                  # split into list
+        reg_num = len(reg[i])
         for j in range(reg_num):
-            if len(reg[i][j]) >= len(max(reg[i], key=len)):
+            if len(reg[i][j]) >= len(max(reg[i], key=len)):         # get only longest items (address vals)
                 reg[i].append(reg[i][j])
-        del reg[i][0:reg_num]
+        del reg[i][0:reg_num]                       # remove old list items
 
-    for i in range(num):
-        things[i] = reg[i]
 
-    outwords = [s, "ch?for now", "address: (for now)"]
-    # change those later
+    # reg names and add to nested dictionaries
+    if len(reg_name) == 0:                          # if reg_name not exist --> reg_address1, 2, 3, ...
+        for i in range(len(reg[0])):
+            reg_name.append(f"reg_address{i}")
+    else:                                           # if exists --> format into names list
+        reg_name = reg_name.replace("reg-names = \"", "").replace("\";", "").replace("\\0", " ").strip()
+        reg_name = reg_name.split(" ")
+    for i in range(length):                         # pair reg_names w address values and add to dict
+        for j in range(len(reg[0])):
+            things_vals[reg_name[j]] = reg[i][j]
 
-    show_info(things, outwords, file)
 
-"""
-    for i in range(num):                            # probably change the outputs to make more sense too
-        print(f"ch{i}")
-        print(f"\t{s}_address: {things[i][0]}") 
-"""
+    # format things dict
+    for i in range(length):                         # get order and add to things dict
+        idx = num_order.index(min(num_order))                       # get min val
+        things[f"{word[0:2]}{num_order[idx]}"] = things_vals[i]     # add smallest num_order key to dict with nested dict as value
+        num_order[idx] = max(num_order) + 10                        # make min > max to 'remove'
+
+
+    show_info(things, file)
+    #return things
