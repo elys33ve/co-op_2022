@@ -1,6 +1,19 @@
 # functions for searching and displaying info from dts file
 # eventually something like "dts-parser <file> <search str>" to do stuff
 
+
+"""
+
+AAHHAHAH I HAVE TESTED THIS ONCE SINCE I REDID THE ENTIRE SCRIPT
+
+FUCK YOU MONDAY FIONA HAVE FUN WITH THIS SHIT :DDD
+
+AHAHHAHAHAAAHA LOSER
+
+"""
+
+
+
 ##### file stuff for testing
 txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff rn
 dts = "/home/fiona/dt.dts"                  # the actual file
@@ -85,7 +98,7 @@ def get_things (word, file=dts):            # (search term, file)
             if "reg =" in l[lines[i] + j]:
                 reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
             if "reg-names" in l[lines[i] +j]:
-                reg_name = l[lines[i] + j]
+                reg_name.append(l[lines[i] + j])
             
 
     # split reg lines and replace with necessary values
@@ -118,4 +131,4 @@ def get_things (word, file=dts):            # (search term, file)
 
 
     show_info(things, file)
-    #return things
+#    return things
