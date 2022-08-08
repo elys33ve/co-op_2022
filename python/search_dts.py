@@ -2,18 +2,6 @@
 # eventually something like "dts-parser <file> <search str>" to do stuff
 
 
-"""
-
-AAHHAHAH I HAVE TESTED THIS ONCE SINCE I REDID THE ENTIRE SCRIPT
-
-FUCK YOU MONDAY FIONA HAVE FUN WITH THIS SHIT :DDD
-
-AHAHHAHAHAAAHA LOSER
-
-"""
-
-
-
 ##### file stuff for testing
 txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff rn
 dts = "/home/fiona/dt.dts"                  # the actual file
@@ -22,7 +10,7 @@ dts = "/home/fiona/dt.dts"                  # the actual file
 #############################################################################################
 
 ### return list of line numbers for each search str word occurence
-def get_lines (word, file=dts):       # (search str, file)
+def get_lines (word, file=dts):       # (search str, file) 
     o = open(file, 'r')
     idx = 0                 # current index
     line_list = []          # line numbers str appears
@@ -95,11 +83,12 @@ def get_things (word, file=dts):            # (search term, file)
             num_order[i] = int(num_order[i], 0)
 
         for j in range(25):                             # get reg address line and reg names
-            if "reg =" in l[lines[i] + j]:
-                reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
-            if "reg-names" in l[lines[i] +j]:
-                reg_name.append(l[lines[i] + j])
-            
+            if lines[i] + j < len(l):                           # prevent line number out of range for end of file
+                if "reg-names" in l[lines[i] +j]:
+                    reg_name.append(l[lines[i] + j])                
+                if "reg =" in l[lines[i] + j] and len(reg) < i + 1:     # 'and' prevents lines getting cut for some reason
+                    reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
+
 
     # split reg lines and replace with necessary values
     for i in range(length):
@@ -109,26 +98,30 @@ def get_things (word, file=dts):            # (search term, file)
             if len(reg[i][j]) >= len(max(reg[i], key=len)):         # get only longest items (address vals)
                 reg[i].append(reg[i][j])
         del reg[i][0:reg_num]                       # remove old list items
+        
 
 
     # reg names and add to nested dictionaries
-    if len(reg_name) == 0:                          # if reg_name not exist --> reg_address1, 2, 3, ...
-        for i in range(len(reg[0])):
-            reg_name.append(f"reg_address{i}")
-    else:                                           # if exists --> format into names list
-        reg_name = reg_name.replace("reg-names = \"", "").replace("\";", "").replace("\\0", " ").strip()
-        reg_name = reg_name.split(" ")
-    for i in range(length):                         # pair reg_names w address values and add to dict
-        for j in range(len(reg[0])):
-            things_vals[reg_name[j]] = reg[i][j]
+    for i in range(length):        
+        if len(reg_name) < len(reg):                          # if reg_name not exist --> reg_address1, 2, 3, ...
+            for i in range(len(reg[i])):
+                reg_name.append(f"reg_address{i}")
+        else:                                           # if exists --> format into names list
+            reg_name[i] = reg_name[i].replace("reg-names = \"", "").replace("\";", "").replace("\\0", " ").strip()
+            reg_name[i] = reg_name[i].split(" ")
 
 
     # format things dict
     for i in range(length):                         # get order and add to things dict
-        idx = num_order.index(min(num_order))                       # get min val
-        things[f"{word[0:2]}{num_order[idx]}"] = things_vals[i]     # add smallest num_order key to dict with nested dict as value
+        for j in range(len(reg[i])):
+            things_vals[reg_name[i][j]] = reg[i][j]
+
+        idx = num_order.index(min(num_order))                       # get min val        
+        things[f"{word[0:2]}{num_order[idx]}"] = things_vals        # add smallest num_order key to dict with nested dict as value
+        
         num_order[idx] = max(num_order) + 10                        # make min > max to 'remove'
+        
+    show_info(things)
 
 
-    show_info(things, file)
 #    return things
