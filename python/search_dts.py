@@ -77,6 +77,10 @@ def get_things (word, file=dts):            # (search term, file)
     r_name = False                              # if register names found, set to true
     reg_name = []                               # register names (if exist)
 
+    
+    if lines == []:                             # prevent error if search term not found -- output nothing
+        return 0
+    
 
     # get and format lines
     for i in range(length):                     # get number / order, registers, and reg names
