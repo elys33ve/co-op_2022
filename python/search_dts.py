@@ -41,9 +41,10 @@ def show_lines (lines, file=dts):       # (list of lines to print, file)
 def show_info(things, file=dts):        # (dictionary from get_things, file)
     l = open(file, 'r').readlines()
 
-    length = len(things)            # number of items in dictionary      
+    length = len(things) -1         # number of items in dictionary (minus last entry -- other information)   
     keys = list(things)             # list of dictionary keys
     val_keys = []                   
+
 
     for i in range(length):         # format and print dict
         print(f"{keys[i]}:")
@@ -65,7 +66,7 @@ def get_things (word, file=dts):            # (search term, file)
     things = {}                         # dictionary of things to return
     # {<word><number order> : {<reg name 1> : <number/address>, <reg name 2> : <number/address>}}
     # ex (channel): {"ch0" : {"channel_in" : 0x800000, "channel_out" : 0x0302399, "line_test" : 0x0293443}}
-    things_vals = {}                    # nested dictionary for things
+    things_vals = []                    # list of nested dictionaries for things
     reg = []                            # nested lists of register numbers for each driver
 
     lines = get_lines(f"{word}@")               # get starting lines
@@ -76,16 +77,18 @@ def get_things (word, file=dts):            # (search term, file)
 
     # get and format lines
     for i in range(length):                     # get number / order, registers, and reg names
-        if len(num_order) <= 0:                         # if no order, generate list 0 to length
-            num_order[i] = i
+        if num_order == [] or num_order == -1:          # if no order set -1 and keep order
+            num_order = -1
         else:                                           # if numbers exist, format, get integers in dec
             num_order[i] = l[num_order[i]].replace(f"{word}_number = <", "").replace(">;", "").strip()
             num_order[i] = int(num_order[i], 0)
 
         for j in range(25):                             # get reg address line and reg names
             if lines[i] + j < len(l):                           # prevent line number out of range for end of file
+                
                 if "reg-names" in l[lines[i] +j]:
                     reg_name.append(l[lines[i] + j])                
+                
                 if "reg =" in l[lines[i] + j] and len(reg) < i + 1:     # 'and' prevents lines getting cut for some reason
                     reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
 
@@ -94,34 +97,52 @@ def get_things (word, file=dts):            # (search term, file)
     for i in range(length):
         reg[i] = reg[i].split(" ")                  # split into list
         reg_num = len(reg[i])
+        
         for j in range(reg_num):
             if len(reg[i][j]) >= len(max(reg[i], key=len)):         # get only longest items (address vals)
                 reg[i].append(reg[i][j])
-        del reg[i][0:reg_num]                       # remove old list items
         
+        del reg[i][0:reg_num]                       # remove old list items
+    n = len(reg[0])                         # number of reg addresses for each
 
 
     # reg names and add to nested dictionaries
     for i in range(length):        
+        
         if len(reg_name) < len(reg):                          # if reg_name not exist --> reg_address1, 2, 3, ...
-            for i in range(len(reg[i])):
+            for i in range(n):
                 reg_name.append(f"reg_address{i}")
         else:                                           # if exists --> format into names list
             reg_name[i] = reg_name[i].replace("reg-names = \"", "").replace("\";", "").replace("\\0", " ").strip()
             reg_name[i] = reg_name[i].split(" ")
 
 
+    # create list of dictionaries for each
+    for i in range(length):
+        temp = {}                                   # add to temp dict
+        for j in range(n):
+            if type(reg_name[i]) == str:               # if no register names    
+                temp[reg_name[i]] = reg[i][j]
+            else:
+                temp[reg_name[i][j]] = reg[i][j]
+
+        things_vals.append(temp)                    # add dictionaries to list
+
+
     # format things dict
     for i in range(length):                         # get order and add to things dict
-        for j in range(len(reg[i])):
-            things_vals[reg_name[i][j]] = reg[i][j]
 
-        idx = num_order.index(min(num_order))                       # get min val        
-        things[f"{word[0:2]}{num_order[idx]}"] = things_vals        # add smallest num_order key to dict with nested dict as value
-        
-        num_order[idx] = max(num_order) + 10                        # make min > max to 'remove'
-        
+        if num_order == -1:                                 # if no order
+            things[f"{word[0:2]}{i}"] = things_vals[i]
+
+        else:                                               # if number order
+            idx = num_order.index(min(num_order))                       # get min val        
+            things[f"{word[0:2]}{num_order[idx]}"] = things_vals[idx]   # add smallest num_order key to dict with nested dict as value
+            num_order[idx] = max(num_order) + 10                        # make min > max to 'remove'
+
+    things[word] = word                             # last dict entry for other information (just keyword / search term for now)
+
+
+
     show_info(things)
-
-
-#    return things
+    #return things
