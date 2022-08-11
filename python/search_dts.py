@@ -182,3 +182,55 @@ def get_things (word, file=dts):            # (search term, file)
     show_info(things)
   
     #return things
+    
+    
+    """
+    
+    from dts_search import get_lines, dts
+
+
+def get_thing (word, file=dts):
+    l = open(file, 'r').readlines()
+
+    things = {}                             # main dictionary
+    thing_keys = []                         # keys -- name/order for each set of driver info
+    thing_vals = []                         # vals -- nested dicts of {name : info, ...} for each driver set
+
+    nodes = []                              # temp list of individual lines to format then add to dict
+
+    lines = get_lines(f"{word}@")           # list of first line for each set of driver info
+    amt = len(lines)                        # number of sets
+
+    ###
+
+    if lines == []:                     # prevent error if word not in found
+        return 0
+
+
+    for i in range(amt):                # get start point -- after "{"
+        if "{" in l[lines[i] + 1]:
+            lines[i] = lines[i] + 2
+        else:
+            lines[i] = lines[i] + 1
+
+        j = 0
+        while "}" not in l[lines[i] + j]:
+            nodes.append(l[lines[i] + j].strip())
+            j += 1
+
+
+    for i in range(amt):
+        idx = nodes[i].index("=")
+        thing_keys.append(nodes[i][0:idx].strip())
+        nodes[i] = nodes[i].replace(f"{thing_keys[i]} = ", "")
+        
+        if "\"" in nodes[i]:
+            nodes[i].replace("\"", "")
+            temp = []
+            while "\0" in nodes[i]:
+                idx = nodes[i].index("\0")
+                temp.append(nodes[i][0:idx])
+                nodes[i].replace(nodes[i][0:idx + 1], "")
+            temp.append(nodes[i])
+        print(nodes[i])
+"""
