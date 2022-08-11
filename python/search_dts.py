@@ -1,6 +1,23 @@
 # functions for searching and displaying info from dts file
 # eventually something like "dts-parser <file> <search str>" to do stuff
 
+"""
+
+channel: registers/names, channel number, (clocks/names, bitrate, compatible, refclk, polarity c/d)
+
+clocktrack: registers (en 0-3, setpoints (12), clocks/names, compatible)
+
+dma_central: registers (clocks/names, interrupts/parent, retry, num channels, compatible)
+
+tmoip_system: 
+
+-------
+
+TODO: get_things will grab each line between {} for each different channel, clocktrack, etc.
+format each line, sort items into lists, pair necessary items (reg/reg-names), and add to things dict
+
+"""
+
 
 ##### file stuff for testing
 txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff rn
@@ -161,6 +178,7 @@ def get_things (word, file=dts):            # (search term, file)
 
     things[word] = word                             # last dict entry for other information (just keyword / search term for now)
 
-
+    
     show_info(things)
+  
     #return things
