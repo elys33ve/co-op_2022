@@ -1,236 +1,116 @@
-# functions for searching and displaying info from dts file
-# eventually something like "dts-parser <file> <search str>" to do stuff
-
-"""
-
-channel: registers/names, channel number, (clocks/names, bitrate, compatible, refclk, polarity c/d)
-
-clocktrack: registers (en 0-3, setpoints (12), clocks/names, compatible)
-
-dma_central: registers (clocks/names, interrupts/parent, retry, num channels, compatible)
-
-tmoip_system: 
-
--------
-
-TODO: get_things will grab each line between {} for each different channel, clocktrack, etc.
-format each line, sort items into lists, pair necessary items (reg/reg-names), and add to things dict
-
-"""
+from dts_search import get_lines
+from dts_search import dts, txt, tst
 
 
-##### file stuff for testing
-txt = "/home/fiona/Documents/test.txt"      # txt file for testing stuff rn
-dts = "/home/fiona/dt.dts"                  # the actual file
+#####################################################
 
 
-#############################################################################################
-
-### return list of line numbers for each search str word occurence
-def get_lines (word, file=dts):       # (search str, file) 
-    o = open(file, 'r')
-    idx = 0                 # current index
-    line_list = []          # line numbers str appears
-
-    for line in o:
-        idx += 1
-        if word in line:
-            line_list.append(idx-1)         # add line num to list
-    return line_list
-
-
-### print line(s) by line number
-def show_lines (lines, file=dts):       # (list of lines to print, file)
-    l = open(file, 'r').readlines()
-    
-    if type(lines) == str:                  # if arg is string --> search for word, then print
-        lines = get_lines(lines, file)
-        for i in range(len(lines)):
-            print(l[lines[i]])
-    elif type(lines) == type(1):            # if single line (int)
-        print(l[lines])
-    else:                                   # if multiple lines (list)
-        for i in range(len(lines)):
-            print(l[lines[i]])
-
-
-### print dictionary info
-def show_info(things, file=dts):        # (dictionary from get_things, file)
+def get_things (word, file):
     l = open(file, 'r').readlines()
 
-    length = len(things) -1         # number of items in dictionary (minus last entry -- other information)   
-    keys = list(things)             # list of dictionary keys
-    val_keys = []                   
+    things = {}                 # main dict for things
+    things_keys = []            # list of unordered keys
+    things_vals = []            # list of unordered vals
 
+    order = []                  # if theres pre-defined order
 
-    for i in range(length):         # format and print dict
-        print(f"{keys[i]}:")
-        val_dict = things[keys[i]]              # current nested dict
-        val_keys = list(val_dict)               # list of nested dictionary keys
-        for j in range(len(things[keys[i]])):
-            print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")      # print info / vals
+    start_lines = get_lines(f"{word}@", file)
+    amt = len(start_lines)
+    i, j = 0, 0
 
-
-
-
-#############################################################################################
-
-### find, order, return dictionary of things
-### ("channel", "clocktrack", "dma_central", "tmoip_system")
-def get_things (word, file=dts):            # (search term, file)
-    l = open(file, 'r').readlines()     # get lines by line number
-
-    drivers = ["channel", "clocktrack", "dma_central", "tmoip_system"]      # this is doing nothing rn
-
-    things = {}                         # dictionary of things to return
-    # {<word><number order> : {<reg name 1> : <number/address>, <reg name 2> : <number/address>}}
-    # ex (channel): {"ch0" : {"channel_in" : 0x800000, "channel_out" : 0x0302399, "line_test" : 0x0293443}}
-    things_vals = []                    # list of nested dictionaries for things
-    reg = []                            # nested lists of register numbers for each driver
-
-    lines = get_lines(f"{word}@")               # get starting lines
-    num_order = get_lines(f"{word}_number")     # get numbers for dictionary order
-    length = len(lines)                         # number of dictionary items
-    r_name = False                              # if register names found, set to true
-    reg_name = []                               # register names (if exist)
-
-    
-    if lines == []:                             # prevent error if search term not found -- output nothing
-        return 0
-    
-
-    # get and format lines
-    for i in range(length):                     # get number / order, registers, and reg names
-        if num_order == [] or num_order == -1:          # if no order set -1 and keep order
-            num_order = -1
-        else:                                           # if numbers exist, format, get integers in dec
-            num_order[i] = l[num_order[i]].replace(f"{word}_number = <", "").replace(">;", "").strip()
-            num_order[i] = int(num_order[i], 0)
-
-        for j in range(25):                             # get reg address line and reg names
-            if lines[i] + j < len(l):                           # prevent line number out of range for end of file
-                if '};' in l[lines[i] + j]:
-                    break
-                
-                else:
-                    if "reg-names" in l[lines[i] + j]:
-                        reg_name.append(l[lines[i] + j])
-                        r_name = True              
-                
-                    if "reg =" in l[lines[i] + j] and len(reg) < i + 1:     # 'and' prevents lines getting cut for some reason
-                        reg.append(l[lines[i] + j].replace("reg = <", "").replace(">;", "").strip())
-
-
-    # split reg lines and replace with necessary values
-    for i in range(length):
-        reg[i] = reg[i].split(" ")                  # split into list
-        reg_num = len(reg[i])
-        
-        for j in range(reg_num):
-            if len(reg[i][j]) >= len(max(reg[i], key=len)):         # get only longest items (address vals)
-                reg[i].append(reg[i][j])
-        
-        del reg[i][0:reg_num]                       # remove old list items
-    n = len(reg[0])                         # number of reg addresses for each
-
-
-    # reg names and add to nested dictionaries
-    for i in range(length):        
-        
-        if r_name == False:                             # if reg_name not exist --> reg_address1, 2, 3, ...
-            reg_name.append([])
-            for j in range(n):
-                reg_name[i].append(f"reg_address_{j+1}")
-        else:                                           # if exists --> format into names list
-            reg_name[i] = reg_name[i].replace("reg-names = \"", "").replace("\";", "").replace("\\0", " ").strip()
-            reg_name[i] = reg_name[i].split(" ")
-
-
-    # create list of dictionaries for each
-    for i in range(length):
-        temp = {}                                   # add to temp dict
-        for j in range(n):
-            if type(reg_name[i]) == str:               # if no register names    
-                temp[reg_name[i]] = reg[i][j]
-            else:
-                temp[reg_name[i][j]] = reg[i][j]
-
-        things_vals.append(temp)                    # add dictionaries to list
-
-
-    # format things dict
-    for i in range(length):                         # get order and add to things dict
-
-        if word == "clocktrack":
-            word_thing = "clocktr"
-        elif '_' in word:
-            word_thing = word[0:word.index('_')]
-        else:
-            word_thing = word[0:2]
-
-        if num_order == -1:                                 # if no order
-            things[f"{word_thing}{i}"] = things_vals[i]
-
-        else:                                               # if number order
-            idx = num_order.index(min(num_order))                       # get min val        
-            things[f"{word_thing}{num_order[idx]}"] = things_vals[idx]   # add smallest num_order key to dict with nested dict as value
-            num_order[idx] = max(num_order) + 10                        # make min > max to 'remove'
-
-    things[word] = word                             # last dict entry for other information (just keyword / search term for now)
-
-    
-    show_info(things)
-  
-    #return things
-    
-    
-    """
-    
-    from dts_search import get_lines, dts
-
-
-def get_thing (word, file=dts):
-    l = open(file, 'r').readlines()
-
-    things = {}                             # main dictionary
-    thing_keys = []                         # keys -- name/order for each set of driver info
-    thing_vals = []                         # vals -- nested dicts of {name : info, ...} for each driver set
-
-    nodes = []                              # temp list of individual lines to format then add to dict
-
-    lines = get_lines(f"{word}@")           # list of first line for each set of driver info
-    amt = len(lines)                        # number of sets
-
-    ###
-
-    if lines == []:                     # prevent error if word not in found
+    if start_lines == []:                   # prevent error if nothing found
         return 0
 
 
-    for i in range(amt):                # get start point -- after "{"
-        if "{" in l[lines[i] + 1]:
-            lines[i] = lines[i] + 2
-        else:
-            lines[i] = lines[i] + 1
+    ###     get start point
+    for i in range(amt):
+        if "{" in l[start_lines[i] + 1]:                    # normal ppl code
+            start_lines[i] += 2
+        elif "{" in l[start_lines[i]]:                      # semi-respectible ppl code
+            start_lines[i] += 1
+        else:                                               # no
+            print("where tf is the curly thing")
+            return 0
 
-        j = 0
-        while "}" not in l[lines[i] + j]:
-            nodes.append(l[lines[i] + j].strip())
+
+    ###     get lines
+    for i in range(amt):
+        lines = []                  # temp list for lines
+        
+        while "};" not in l[start_lines[i] + j]:        # get temp lines list
+            lines.append(l[start_lines[i] + j].strip())
             j += 1
 
+        temp_keys = []
+        temp_vals = []
+        for j in range(len(lines)):                     # get temp keys/vals lists
+            
+            # keys
+            idx = lines[j].index("=")
+            temp_keys.append(lines[j][0:idx].strip())
+            lines[j] = lines[j].replace(f"{lines[j][0:idx]}= ", "")
 
-    for i in range(amt):
-        idx = nodes[i].index("=")
-        thing_keys.append(nodes[i][0:idx].strip())
-        nodes[i] = nodes[i].replace(f"{thing_keys[i]} = ", "")
+
+            # vals
+            lines[j] = lines[j].replace(";", "")
+
+            if "\"" in lines[j]:                    # strings / names
+                lines[j] = lines[j].replace("\"", "")
+                if "\\0" in lines[j]:
+                    tmp = []
+                    while "\\0" in lines[j]:                    # multiple names
+                        idx = lines[j].index("\\")
+                        tmp.append(lines[j][0:idx])
+                        lines[j] = lines[j].replace(f"{lines[j][0:idx]}\\0", "")
+                    tmp.append(lines[j])
+                    temp_vals.append(tmp)
+                else:
+                    temp_vals.append(lines[j])
+
+            elif "<" in lines[j]:                   # numbers / addresses
+                lines[j] = lines[j].replace("<", "").replace(">", "")
+                if " " in lines[j]:                                     # - possibly make separate funct later -
+                    tmp = lines[j].split(" ")
+                    temp_vals.append(tmp)
+                else:
+                    temp_vals.append(lines[j])
+
+        # special things
+        # (reg, reg-names, channel_number)
+        if "reg" in temp_keys:                      # register addresses
+            idx = temp_keys.index("reg")
+            tmp = len(temp_vals[idx])
+            
+            for j in range(tmp):                            # get items w max str length
+                if len(temp_vals[idx][j]) == len(max(temp_vals[idx], key=len)):
+                    temp_vals[idx].append(temp_vals[idx][j])
+            
+            del temp_vals[idx][0:tmp]
+
+
+        if "channel_number" in temp_keys:           # get order
+            idx = temp_keys.index("channel_number")
+            order.append(int(temp_vals[idx], 0))
+            del temp_keys[idx]
+            del temp_vals[idx]
+
+
+        # add to lists
+        if "reg" in temp_keys and "reg-names" in temp_keys:
+            # get index for vals
+            # add together
+            # delete keys and vals
+        elif "reg" in temp_keys:
+            #just add first
+            #delete key and val
         
-        if "\"" in nodes[i]:
-            nodes[i].replace("\"", "")
-            temp = []
-            while "\0" in nodes[i]:
-                idx = nodes[i].index("\0")
-                temp.append(nodes[i][0:idx])
-                nodes[i].replace(nodes[i][0:idx + 1], "")
-            temp.append(nodes[i])
-        print(nodes[i])
-"""
+        lines = {}
+        for j in range(len(temp_keys)):
+            # add everything to lines as dictionary key and val
+        
+
+        # add lines as dict to things_vals
+
+
+
+        lines, j = [], 0
