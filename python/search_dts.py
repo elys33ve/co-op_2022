@@ -49,6 +49,11 @@ def show_lines (lines, file=dts):       # (list of lines to print, file)
 
 ### print info from things dictionary
 def show_things (things, file=dts):     # (dict of ordered driver info from funct get_things, file)
+    if things == 0:                     # mostly for if fed from get_things, when word not found in file
+        print("not found in file")              # avoid error
+        return 0
+
+
     amt = len(things)
     keys = list(things)
 
@@ -60,8 +65,16 @@ def show_things (things, file=dts):     # (dict of ordered driver info from func
         val_keys = list(val_dict)
 
         for j in range(len(things[keys[i]])):       # print info from nested dictionaries
-                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
 
+            if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
+                tmp = ""
+                for k in range(len(val_dict[val_keys[j]]) - 1):
+                    tmp += val_dict[val_keys[j]][k] + ", "
+                tmp += val_dict[val_keys[j]][k + 1]
+                print(f"\t{val_keys[j]}: {tmp}")
+
+            else:
+                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
 
 
 
@@ -82,7 +95,8 @@ def get_things (word, file=dts):
     amt = len(start_lines)
     i, j = 0, 0
 
-    if start_lines == []:                   # prevent error if nothing found
+
+    if len(start_lines) == 0:                   # prevent error if nothing found
         return 0
 
 
@@ -135,7 +149,7 @@ def get_things (word, file=dts):
                 lines[j] = lines[j].replace("<", "").replace(">", "")
                 temp_vals.append(lines[j])
 
-        # special things
+        ## special things
         # (reg, reg-names, channel_number)
         if "reg" in temp_keys:                      # register addresses
 
@@ -157,26 +171,52 @@ def get_things (word, file=dts):
             del temp_vals[idx]
 
 
-        lines = {}
+        lines = {}                          # temp dictionary for sorting nodes
 
-        # add to lists
+        ## add to temp dict 'lines'
+        # specialer things for the top
         if "reg" in temp_keys and "reg-names" in temp_keys:     # if reg-names exists 
             idx_n = temp_keys.index("reg-names")
             idx_v = temp_keys.index("reg")
             nam = temp_vals[idx_n]
             reg = temp_vals[idx_v]
 
-
-            for j in range(len(nam)):                           # add channel names / addresses to temp dict
+            for j in range(len(reg)):                               # add reg names / addresses to temp dict
                 lines[nam[j]] = reg[j]
 
-            del temp_keys[idx_n]                                # delete from lists
+            del temp_keys[idx_n]                                    # delete from lists
             del temp_vals[idx_n]
             idx_v = temp_keys.index("reg")
             del temp_keys[idx_v]
             del temp_vals[idx_v]
 
-        for j in range(len(temp_keys)):
+        elif "reg" in temp_keys:                                # if only reg exists
+            idx = temp_keys.index("reg")
+            reg = temp_vals[idx]
+            
+            for j in range(len(reg)):                               # add reg addresses to front of dict
+                lines[f"register_{j}"] = reg[j]
+
+            del temp_keys[idx]                                      # delete from lists
+            del temp_vals[idx]
+
+        j = 0
+        while f"en{j}" in temp_keys:                            # en0, en1, en...
+            idx = temp_keys.index(f"en{j}")
+            lines[temp_keys[idx]] = temp_vals[idx]
+            del temp_keys[idx]
+            del temp_vals[idx]
+            j += 1
+
+        to_remove = []                                          # i'm making this far more complicated than necessary                               
+        for j in range(len(temp_keys)):                         # for setpoints
+            if "setpoint" in temp_keys[j]:
+                lines[temp_keys[j]] = temp_vals[j]
+                to_remove.append(j)
+        
+
+        # add other things                          # - if i wanna make it even more unnecessarily complex,
+        for j in range(len(temp_keys)):             # could sort by number found in temp_keys str -
             lines[temp_keys[j]] = temp_vals[j]
         
 
@@ -186,9 +226,12 @@ def get_things (word, file=dts):
     
     ### order
     for i in range(amt):                        # order and add nested dicts to main dict
-        idx = order.index(min(order))
-        things[f"{word}{i}"] = things_vals[i]
-        order[idx] = max(order) + 10
+        if order == []:
+            things[f"{word}{i}"] = things_vals[i]
+        else:
+            idx = order.index(min(order))
+            things[f"{word}{i}"] = things_vals[i]
+            order[idx] = max(order) + 10
 
 
     return things
