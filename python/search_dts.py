@@ -1,10 +1,75 @@
-from dts_search import get_lines
-from dts_search import dts, txt, tst
+# functions for searching and displaying info from dts file
+# eventually something like "dts-parser <file> <search str>" to do stuff
+
+"""
+
+channel: registers/names, channel number, (clocks/names, bitrate, compatible, refclk, polarity c/d)
+clocktrack: registers (en 0-3, setpoints (12), clocks/names, compatible)
+dma_central: registers (clocks/names, interrupts/parent, retry, num channels, compatible)
+tmoip_system: 
+
+"""
 
 
-#####################################################
+##### file stuff for testing
+tst = "/home/fiona/projects/fi_src/python/test.txt"     # simplified dts file for testing
+txt = "/home/fiona/Documents/test.txt"                  # txt file for testing stuff rn
+dts = "/home/fiona/dt.dts"                              # the actual file
 
 
+#############################################################################################
+
+### return list of line numbers for each search str word occurence
+def get_lines (word, file=dts):       # (search str, file) 
+    o = open(file, 'r')
+    idx = 0                 # current index
+    line_list = []          # line numbers str appears
+
+    for line in o:
+        idx += 1
+        if word in line:
+            line_list.append(idx-1)         # add line num to list
+    return line_list
+
+
+### print line(s) by line number
+def show_lines (lines, file=dts):       # (list of lines to print, file)
+    l = open(file, 'r').readlines()
+    
+    if type(lines) == str:                  # if arg is string --> search for word, then print
+        lines = get_lines(lines, file)
+        for i in range(len(lines)):
+            print(l[lines[i]])
+    elif type(lines) == type(1):            # if single line (int)
+        print(l[lines])
+    else:                                   # if multiple lines (list)
+        for i in range(len(lines)):
+            print(l[lines[i]])
+
+
+### print info from things dictionary
+def show_things (things, file=dts):     # (dict of ordered driver info from funct get_things, file)
+    amt = len(things)
+    keys = list(things)
+
+
+    for i in range(amt):
+        print(f"{keys[i]}:")                # driver name and number
+        
+        val_dict = things[keys[i]]
+        val_keys = list(val_dict)
+
+        for j in range(len(things[keys[i]])):       # print info from nested dictionaries
+                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
+
+
+
+
+#############################################################################################
+
+
+### search dts file for keyword (one of the 4 drivers specifically)
+### create py dictionary for driver info
 def get_things (word, file=dts):
     l = open(file, 'r').readlines()
 
@@ -68,16 +133,14 @@ def get_things (word, file=dts):
 
             elif "<" in lines[j]:                   # numbers / addresses
                 lines[j] = lines[j].replace("<", "").replace(">", "")
-                if " " in lines[j]:                                     # - possibly make separate funct later -
-                    tmp = lines[j].split(" ")
-                    temp_vals.append(tmp)
-                else:
-                    temp_vals.append(lines[j])
+                temp_vals.append(lines[j])
 
         # special things
         # (reg, reg-names, channel_number)
         if "reg" in temp_keys:                      # register addresses
+
             idx = temp_keys.index("reg")
+            temp_vals[idx] = temp_vals[idx].split(" ")
             tmp = len(temp_vals[idx])
             
             for j in range(tmp):                            # get items w max str length
@@ -117,36 +180,15 @@ def get_things (word, file=dts):
             lines[temp_keys[j]] = temp_vals[j]
         
 
-        things_vals.append(lines)
-        lines, j = [], 0
+        things_vals.append(lines)                   # add dict to list of dict for each driver
+        lines, j = [], 0                            # reset for next driver
 
     
     ### order
-    for i in range(amt):
+    for i in range(amt):                        # order and add nested dicts to main dict
         idx = order.index(min(order))
         things[f"{word}{i}"] = things_vals[i]
         order[idx] = max(order) + 10
 
 
     return things
-
-
-
-
-def show_things (things, file=dts):             # print stuff
-    l= open(file,'r').readlines()
-
-    amt = len(things)
-    keys = list(things)
-
-
-    for i in range(amt):
-        print(f"{keys[i]}:")
-        
-        val_dict = things[keys[i]]
-        val_keys = list(val_dict)
-
-        for j in range(len(things[keys[i]])):   
-                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
-            
-
