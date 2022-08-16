@@ -5,11 +5,10 @@ from dts_search import dts, txt, tst
 #####################################################
 
 
-def get_things (word, file):
+def get_things (word, file=dts):
     l = open(file, 'r').readlines()
 
     things = {}                 # main dict for things
-    things_keys = []            # list of unordered keys
     things_vals = []            # list of unordered vals
 
     order = []                  # if theres pre-defined order
@@ -95,22 +94,59 @@ def get_things (word, file):
             del temp_vals[idx]
 
 
-        # add to lists
-        if "reg" in temp_keys and "reg-names" in temp_keys:
-            # get index for vals
-            # add together
-            # delete keys and vals
-        elif "reg" in temp_keys:
-            #just add first
-            #delete key and val
-        
         lines = {}
+
+        # add to lists
+        if "reg" in temp_keys and "reg-names" in temp_keys:     # if reg-names exists 
+            idx_n = temp_keys.index("reg-names")
+            idx_v = temp_keys.index("reg")
+            nam = temp_vals[idx_n]
+            reg = temp_vals[idx_v]
+
+
+            for j in range(len(nam)):                           # add channel names / addresses to temp dict
+                lines[nam[j]] = reg[j]
+
+            del temp_keys[idx_n]                                # delete from lists
+            del temp_vals[idx_n]
+            idx_v = temp_keys.index("reg")
+            del temp_keys[idx_v]
+            del temp_vals[idx_v]
+
         for j in range(len(temp_keys)):
-            # add everything to lines as dictionary key and val
+            lines[temp_keys[j]] = temp_vals[j]
         
 
-        # add lines as dict to things_vals
-
-
-
+        things_vals.append(lines)
         lines, j = [], 0
+
+    
+    ### order
+    for i in range(amt):
+        idx = order.index(min(order))
+        things[f"{word}{i}"] = things_vals[i]
+        order[idx] = max(order) + 10
+
+
+    return things
+
+
+
+
+def show_things (things, file=dts):             # print stuff
+    l= open(file,'r').readlines()
+
+    amt = len(things)
+    keys = list(things)
+
+
+    for i in range(amt):
+        print(f"{keys[i]}:")
+        
+        val_dict = things[keys[i]]
+        val_keys = list(val_dict)
+
+        for j in range(len(things[keys[i]])):   
+                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
+            
+
