@@ -59,8 +59,8 @@ def show_things (things, file=dts):     # (dict of ordered driver info from func
 
 
     for i in range(amt):
-        print(f"{keys[i]}:")                # driver name and number
-        
+        print(f"{keys[i]}: ")                # driver name and number
+
         val_dict = things[keys[i]]
         val_keys = list(val_dict)
 
@@ -75,6 +75,58 @@ def show_things (things, file=dts):     # (dict of ordered driver info from func
 
             else:
                 print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
+
+
+
+#############################################################################################
+
+
+### format for html bc theres probably an easier way but ill figure it out later
+def html_format (things, word, file=dts):
+    if things == 0:                     # if word not found in file (dict not created)
+        print("not found in file")              # avoid error
+        return 0
+
+    ### find correct lines to put stuff
+    drivers_html = ["<h3><br>&emsp;channel</h3>",       # idk how im gonna do this yet but ig ill see
+                    "<h3><br>&emsp;clocktrack</h3>", 
+                    "<h3><br>&emsp;dma_central</h3>", 
+                    "<h3><br>&emsp;tmoip_system</h3>"]
+
+
+    amt = len(things)
+    keys = list(things)
+
+    tab = "&emsp;"
+
+     
+    ### html format and writelines() to file (?)
+    ######----------make this stuff work byt formatiting in html and ----------
+    #######-------------- then finding the right lines in indexx.html to put---------
+    #######----------------the stuff in and write to file w the data n shit---------
+    for i in range(amt):
+        x = f"<{keys[i]}: "                # driver name and number
+
+        val_dict = things[keys[i]]
+        val_keys = list(val_dict)
+
+        for j in range(len(things[keys[i]])):       # print info from nested dictionaries
+
+            if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
+                tmp = ""
+                for k in range(len(val_dict[val_keys[j]]) - 1):
+                    tmp += val_dict[val_keys[j]][k] + ", "
+                tmp += val_dict[val_keys[j]][k + 1]
+                print(f"\t{val_keys[j]}: {tmp}")
+
+            else:
+                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
+
+
+
+
+
+
 
 
 
@@ -235,3 +287,6 @@ def get_things (word, file=dts):
 
 
     return things
+
+
+
