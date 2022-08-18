@@ -15,10 +15,7 @@ import time, os
 HOST = "localhost"       # host name
 PORT = 8000              # port 8000: used for development, shouldn't be directly exposed to internet
 
-HTML_FILE = "/home/fiona/projects/fi_src/python/index.html"
-
-
-handler_cgi = http.server.CGIHTTPRequestHandler
+HTML_FILE = "/home/fiona/projects/fi_src/python/dts/index.html"
 
 #####
 
@@ -29,14 +26,13 @@ class MyHttpRequestHandler(SimpleHTTPRequestHandler):
         self.path = 'index.html'
         return SimpleHTTPRequestHandler.do_GET(self)
 
-Handler = MyHttpRequestHandler
 
+def dts_webserver():
+    Handler = MyHttpRequestHandler
  
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print("Http Server Serving at port", PORT)
-    httpd.serve_forever()
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print("Http Server Serving at port", PORT)
+        httpd.serve_forever()
 
-
-
-
+dts_webserver()
 
