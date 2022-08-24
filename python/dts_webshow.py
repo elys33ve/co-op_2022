@@ -1,12 +1,13 @@
 # dash documentation & stuff:   https://dash.plotly.com/dash-core-components
 # frameworks & web info:    https://www.educative.io/blog/web-development-in-python#frameworks
+# dash example (githubl linked):    https://dash.gallery/dash-clustergram/
 
 # http://127.0.0.1:8000/
 
-# eventually will replace dts_webserver and index.html
-
 from dash import Dash, html, dcc, Input, Output
 import dash
+
+from dts_search import get_things
 
 ############################################
 
@@ -18,12 +19,31 @@ app = Dash(__name__)
 drivers = ['channel', 'clocktrack', 'dma_central', 'tmoip_system']
 
 ############################################
+channel = get_things("channel")
+clocktrack = get_things("clocktrack")
+dma_central = get_things("dma_central")
+tmoip_system = get_things("tmoip_system")
+############################################
+
+def channel_rtn ():
+    return 'channels (12)'
+
+def clocktrack_rtn ():
+    return 'clocktrack (3)'
+
+def dma_central_rtn ():
+    return 'dma_central (3)'
+
+def tmoip_system_rtn ():
+    return 'tmoip_system (0)'
+
 
 app.layout = html.Div([
-    html.H4("dts thing"),
+    html.H2("dts thing"),
     html.Br(),
+    html.H4("Driver:"),
     html.Div([
-        dcc.Dropdown(drivers, 'channel', id='my-input'),
+        dcc.Dropdown(options=drivers, id='my-input'),
     ]),
     html.Br(),
     html.Div(id='my-output')
@@ -36,21 +56,11 @@ app.layout = html.Div([
 )
 def update_output_div(input_value):
     if input_value == drivers[0]:
-        x=1
+        return channel_rtn()
     elif input_value == drivers[1]:
-        x=2
+        return clocktrack_rtn()
     elif input_value == drivers[2]:
-        x=3
+        return dma_central_rtn()
     elif input_value == drivers[3]:
-        x=4
+        return tmoip_system_rtn()
 
-    return f'{x}'           ## return slider with however many numbers driver has (slider as ufunction)
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    app.run(debug=True, port=PORT, host=HOST)
