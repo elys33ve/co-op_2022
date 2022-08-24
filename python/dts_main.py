@@ -2,8 +2,7 @@
 # drivers: channel, clocktrack, dma_central, tmoip_system
 
 from dts_search import *            # file with search, format, and display functions for dt.dts file
-from dts_webserver import HTML_FILE, dts_webserver
-
+from dts_webshow import app, PORT, HOST
 
 ###################################################
 
@@ -23,15 +22,10 @@ if __name__ == "__main__":
     #show_things(tmoip_system)
 
 
-    
-
-
-
-
-
-
-
-
     ### start webserver
-    #dts_webserver()
-    
+    app.run(debug=True, port=PORT, host=HOST)
+
+
+
+
+
