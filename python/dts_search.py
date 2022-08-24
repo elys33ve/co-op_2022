@@ -3,10 +3,19 @@
 
 """
 
+(currently)
 channel: registers/names, channel number, (clocks/names, bitrate, compatible, refclk, polarity c/d)
 clocktrack: registers (en 0-3, setpoints (12), clocks/names, compatible)
 dma_central: registers (clocks/names, interrupts/parent, retry, num channels, compatible)
 tmoip_system: 
+
+-----
+
+get_lines(word)         # looks for str word in file, returns list of line numbers where it appears
+get_things(driver)      # gets and formats all info for str driver, orders into and returns dict
+
+show_lines(lines)       # prints all lines with lines as list/int for line number, or with search str
+show_things()           # formats and prints dict of info from get_things()
 
 """
 
@@ -29,113 +38,14 @@ def get_lines (word, file=dts):       # (search str, file)
         idx += 1
         if word in line:
             line_list.append(idx-1)         # add line num to list
+    
     return line_list
 
-
-### print line(s) by line number
-def show_lines (lines, file=dts):       # (list of lines to print, file)
-    l = open(file, 'r').readlines()
-    
-    if type(lines) == str:                  # if arg is string --> search for word, then print
-        lines = get_lines(lines, file)
-        for i in range(len(lines)):
-            print(l[lines[i]])
-    elif type(lines) == type(1):            # if single line (int)
-        print(l[lines])
-    else:                                   # if multiple lines (list)
-        for i in range(len(lines)):
-            print(l[lines[i]])
-
-
-### print info from things dictionary
-def show_things (things, file=dts):     # (dict of ordered driver info from funct get_things, file)
-    if things == 0:                     # mostly for if fed from get_things, when word not found in file
-        print("not found in file")              # avoid error
-        return 0
-
-
-    amt = len(things)
-    keys = list(things)
-
-
-    for i in range(amt):
-        print(f"{keys[i]}: ")                # driver name and number
-
-        val_dict = things[keys[i]]
-        val_keys = list(val_dict)
-
-        for j in range(len(things[keys[i]])):       # print info from nested dictionaries
-
-            if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
-                tmp = ""
-                for k in range(len(val_dict[val_keys[j]]) - 1):
-                    tmp += val_dict[val_keys[j]][k] + ", "
-                tmp += val_dict[val_keys[j]][k + 1]
-                print(f"\t{val_keys[j]}: {tmp}")
-
-            else:
-                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
-
-
-
-#############################################################################################
-
-
-### format for html bc theres probably an easier way but ill figure it out later
-def html_format (things, word, file=dts):
-    if things == 0:                     # if word not found in file (dict not created)
-        print("not found in file")              # avoid error
-        return 0
-
-    ### find correct lines to put stuff
-    drivers_html = ["<h3><br>&emsp;channel</h3>",       # idk how im gonna do this yet but ig ill see
-                    "<h3><br>&emsp;clocktrack</h3>", 
-                    "<h3><br>&emsp;dma_central</h3>", 
-                    "<h3><br>&emsp;tmoip_system</h3>"]
-
-
-    amt = len(things)
-    keys = list(things)
-
-    tab = "&emsp;"
-
-     
-    ### html format and writelines() to file (?)
-    ######----------make this stuff work byt formatiting in html and ----------
-    #######-------------- then finding the right lines in indexx.html to put---------
-    #######----------------the stuff in and write to file w the data n shit---------
-    for i in range(amt):
-        x = f"<{keys[i]}: "                # driver name and number
-
-        val_dict = things[keys[i]]
-        val_keys = list(val_dict)
-
-        for j in range(len(things[keys[i]])):       # print info from nested dictionaries
-
-            if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
-                tmp = ""
-                for k in range(len(val_dict[val_keys[j]]) - 1):
-                    tmp += val_dict[val_keys[j]][k] + ", "
-                tmp += val_dict[val_keys[j]][k + 1]
-                print(f"\t{val_keys[j]}: {tmp}")
-
-            else:
-                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
-
-
-
-
-
-
-
-
-
-#############################################################################################
 
 
 ### search dts file for keyword (one of the 4 drivers specifically)
 ### create py dictionary for driver info
-def get_things (word, file=dts):
+def get_things (driver, file=dts):
     l = open(file, 'r').readlines()
 
     things = {}                 # main dict for things
@@ -143,7 +53,7 @@ def get_things (word, file=dts):
 
     order = []                  # if theres pre-defined order
 
-    start_lines = get_lines(f"{word}@", file)
+    start_lines = get_lines(f"{driver}@", file)
     amt = len(start_lines)
     i, j = 0, 0
 
@@ -279,14 +189,67 @@ def get_things (word, file=dts):
     ### order
     for i in range(amt):                        # order and add nested dicts to main dict
         if order == []:
-            things[f"{word}{i}"] = things_vals[i]
+            things[f"{driver}{i}"] = things_vals[i]
         else:
             idx = order.index(min(order))
-            things[f"{word}{i}"] = things_vals[i]
+            things[f"{driver}{i}"] = things_vals[i]
             order[idx] = max(order) + 10
 
 
     return things
 
 
+#############################################################################################
+
+
+### print line(s) by line number
+def show_lines (lines, file=dts):       # (list of lines to print, file)
+    l = open(file, 'r').readlines()
+    
+    if type(lines) == str:                  # if arg is string --> search for word, then print
+        lines = get_lines(lines, file)
+        for i in range(len(lines)):
+            print(l[lines[i]])
+    elif type(lines) == type(1):            # if single line (int)
+        print(l[lines])
+    else:                                   # if multiple lines (list)
+        for i in range(len(lines)):
+            print(l[lines[i]])
+
+
+
+### print info from things dictionary
+def show_things (things, file=dts):     # (dict of ordered driver info from funct get_things, file)
+    if things == 0:                     # mostly for if fed from get_things, when word not found in file
+        print("not found in file")              # avoid error
+        return 0
+
+
+    amt = len(things)
+    keys = list(things)
+
+
+    for i in range(amt):
+        print("\n")
+        print(f"{keys[i]}: ")                # driver name and number
+
+        val_dict = things[keys[i]]
+        val_keys = list(val_dict)
+
+        for j in range(len(things[keys[i]])):       # print info from nested dictionaries
+
+            if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
+                tmp = ""
+                for k in range(len(val_dict[val_keys[j]]) - 1):
+                    tmp += val_dict[val_keys[j]][k] + ", "
+                tmp += val_dict[val_keys[j]][k + 1]
+                print(f"\t{val_keys[j]}: {tmp}")
+
+            else:
+                print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
+
+    print("\n\n")
+
+
+            
 
