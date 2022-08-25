@@ -1,6 +1,7 @@
 # dash documentation & stuff:   https://dash.plotly.com/dash-core-components
 # frameworks & web info:    https://www.educative.io/blog/web-development-in-python#frameworks
 # dash example (githubl linked):    https://dash.gallery/dash-clustergram/
+# dash html.P style references/examples:    https://www.programcreek.com/python/example/100614/dash_html_components.P
 
 # http://127.0.0.1:8000/
 
@@ -23,6 +24,8 @@ s_min = 0
 s_max = 12
 s_step = 1
 
+s = [0,12,1]
+
 
 ############################################
 channel = get_things("channel")
@@ -31,32 +34,85 @@ dma_central = get_things("dma_central")
 tmoip_system = get_things("tmoip_system")
 ############################################
 
-def get_labels (d_num):
+def format_things (driver, n, head):
+    if driver == {}:
+        return f'{driver} info unavailable.'
+
+    keys = list(driver)
+    val_dict = driver[keys[n]]
+    val_keys = list(val_dict)
+
+    info_str = [head, html.Br()]
+
+    for j in range(len(driver[keys[n]])):           # info from nested dictionaries
+        if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
+            tmp = ""
+            for k in range(len(val_dict[val_keys[j]]) - 1):
+                tmp += val_dict[val_keys[j]][k] + ", "
+            tmp += val_dict[val_keys[j]][k + 1]
+            info_str.append(html.P(f"{val_keys[j]}: {tmp}", style={'marginLeft':'3%'}))
+        else:
+            info_str.append(html.P(f"{val_keys[j]}: {val_dict[val_keys[j]]}", style={'marginLeft':'3%'}))
+
+    return info_str
+
+############################################
+
+
+def get_labels (n):         # list of dictionaries (labels and values) for dropdown
     labels = []
     drop_list = []
-    range_list = list(range(len(d_num)))
-    for i in range(len(get_things(drivers[d_num]))):
-        labels.append(f'{drivers[d_num]} {range_list[i]}')
+    range_list = list(range(len(get_things(drivers[n]))))
+
+    for i in range(len(get_things(drivers[n]))):
+        labels.append(f'{drivers[n]} {range_list[i]}')
         drop_list.append({'label' : labels[i], 'value' : labels[i]})
     return drop_list
 
 
+def smms (n):               # slider min max step
+    mn = 0
+    if len(get_things(drivers[n])) == 0:
+        mx = 0
+    else:
+        mx = len(get_things(drivers[n])) - 1
+    sp = 1
+    return mn, mx, sp
+
+
+
 app.layout = html.Div([
     html.H2("dts thing"), html.Br(),
-    html.H4("Driver:"),
+    html.H4("Drivers:"),
     html.Div([
         dcc.Tabs(id='drivers_tabs', value='tab-1', children=[
-            dcc.Tab(label=drivers[0], value='tab-1', children=[
-                dcc.Dropdown(options=get_labels(0), value=f'{drivers[0]} {0}', id='channel_drop')
+            dcc.Tab(label=drivers[0], value='tab-1', id='channel_tab', children=[
+                html.Br(),
+                #dcc.Dropdown(options=get_labels(0), value=f'{drivers[0]} {0}', id='channel_drop')
+                dcc.Slider(min=smms(0)[0],max=smms(0)[1], step=smms(0)[2], value=0, id='channel_slide'),
+                html.Br(), html.Br(), html.Br(), 
+                html.Div(id='info_out1')
             ]),
-        dcc.Tab(label=drivers[1], value='tab-2', children=[
-                dcc.Dropdown(options=get_labels(1), value=f'{drivers[1]} {1}', id='clocktrack_drop')
+            dcc.Tab(label=drivers[1], value='tab-2', id='clocktrack_tab', children=[
+                html.Br(),
+                #dcc.Dropdown(options=get_labels(1), value=f'{drivers[1]} {1}', id='clocktrack_drop')
+                dcc.Slider(min=smms(1)[0],max=smms(1)[1], step=smms(1)[2], value=0, id='clocktrack_slide'),
+                html.Br(), html.Br(), html.Br(),
+                html.Div(id='info_out2')
             ]),
-        dcc.Tab(label=drivers[2], value='tab-3', children=[
-                dcc.Dropdown(options=get_labels(2), value=f'{drivers[2]} {2}', id='dma_drop')
+            dcc.Tab(label=drivers[2], value='tab-3', id='dma_tab', children=[
+                html.Br(),
+                #dcc.Dropdown(options=get_labels(2), value=f'{drivers[2]} {2}', id='dma_drop')
+                dcc.Slider(min=smms(2)[0],max=smms(2)[1], step=smms(2)[2], value=0, id='dma_slide'),
+                html.Br(), html.Br(), html.Br(),
+                html.Div(id='info_out3') 
             ]),
-        dcc.Tab(label=drivers[3], value='tab-4', children=[
-                dcc.Dropdown(options=get_labels(3), value=f'{drivers[3]} {3}', id='tmoip_drop')
+            dcc.Tab(label=drivers[3], value='tab-4', id='tmoip_tab', children=[
+                html.Br(),
+                #dcc.Dropdown(options=get_labels(3), value=f'{drivers[3]} {3}', id='tmoip_drop')
+                dcc.Slider(min=smms(3)[0],max=smms(3)[1], step=smms(3)[2], value=0, id='tmoip_slide'),
+                html.Br(), html.Br(), html.Br(),
+                html.Div(id='info_out4')
             ])
         ])
     ])
@@ -64,18 +120,48 @@ app.layout = html.Div([
 
 
 
-###### figure out callbacks
-
+### channel
 @app.callback(
-    Output(component_id='dropbox_out', component_property='children'),
-    Input(component_id='drivers_tabs', component_property='value')
+    Output(component_id='info_out1', component_property='children'),
+    Input(component_id='channel_slide', component_property='value')
 )
-def update_output_div(value):
-    if value == drivers[0]:
-        return channel_rtn()
-    elif value == drivers[1]:
-        return clocktrack_rtn()
-    elif value == drivers[2]:
-        return dma_central_rtn()
-    elif value == drivers[3]:
-        return tmoip_system_rtn()
+def update_channel (input_value):
+    driver, n = channel, 0
+    info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
+
+    return format_things(driver, input_value, info_head)
+
+### clocktrack
+@app.callback(
+    Output(component_id='info_out2', component_property='children'),
+    Input(component_id='clocktrack_slide', component_property='value')
+)
+def update_clocktrack (input_value):
+    driver, n = clocktrack, 1
+    info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
+
+    return format_things(driver, input_value, info_head)
+
+### dma_central
+@app.callback (
+    Output(component_id='info_out3', component_property='children'),
+    Input(component_id='dma_slide', component_property='value')
+)
+def update_dma (input_value):
+    driver, n = dma_central, 2
+    info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
+
+    return format_things(driver, input_value, info_head)
+
+### tmoip_system
+@app.callback(
+    Output(component_id='info_out4', component_property='children'),
+    Input(component_id='tmoip_slide', component_property='value')
+)
+def update_tmoip (input_value):
+    driver, n = tmoip_system, 3
+    info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
+
+    return format_things(driver, input_value, info_head)
+
+
