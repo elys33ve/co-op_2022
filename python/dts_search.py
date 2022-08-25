@@ -59,7 +59,7 @@ def get_things (driver, file=dts):
 
 
     if len(start_lines) == 0:                   # prevent error if nothing found
-        return 0
+        return {}
 
 
     ###     get start point
@@ -220,7 +220,7 @@ def show_lines (lines, file=dts):       # (list of lines to print, file)
 
 ### print info from things dictionary
 def show_things (things, file=dts):     # (dict of ordered driver info from funct get_things, file)
-    if things == 0:                     # mostly for if fed from get_things, when word not found in file
+    if things == {}:                    # mostly for if fed from get_things, when word not found in file
         print("not found in file")              # avoid error
         return 0
 
@@ -252,4 +252,3 @@ def show_things (things, file=dts):     # (dict of ordered driver info from func
 
 
             
-
