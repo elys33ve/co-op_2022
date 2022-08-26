@@ -24,15 +24,14 @@ dma_central = get_things("dma_central")
 tmoip_system = get_things("tmoip_system")
 ############################################
 
-def format_things (driver, n, head):
-    if driver == {}:
+def format_things (driver, n, head):                # format output
+    if driver == {}:                    # for if dict is empty (no info was found)
         return f'{driver} info unavailable.'
 
-    keys = list(driver)
-    val_dict = driver[keys[n]]
-    val_keys = list(val_dict)
-
-    info_str = [head, html.Br()]
+    keys = list(driver)             # list of dict keys
+    val_dict = driver[keys[n]]      # list of dict vals
+    val_keys = list(val_dict)       # list of keys for vals w type dict
+    info_str = [head, html.Br()]    # list of strings to return
 
     for j in range(len(driver[keys[n]])):           # info from nested dictionaries
         if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done to dictionary
@@ -65,7 +64,7 @@ def smms (n):               # slider min max step
     if len(get_things(drivers[n])) == 0:
         mx = 0
     else:
-        mx = len(get_things(drivers[n])) - 1
+        mx = len(get_things(drivers[n])) - 1        # get length of dict for slider range
     sp = 1
     return mn, mx, sp
 
@@ -153,3 +152,4 @@ def update_tmoip (input_value):
     info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
 
     return format_things(driver, input_value, info_head)
+
