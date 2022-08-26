@@ -6,26 +6,16 @@
 # http://127.0.0.1:8000/
 
 from dash import Dash, html, dcc, Input, Output
-import dash
-
 from dts_search import get_things
 
 ############################################
 
 PORT = 8000
-HOST = '127.0.0.1'          # dash defult
+HOST = '127.0.0.1'              # dash defult
 
 app = Dash(__name__)
 
 drivers = ['channel', 'clocktrack', 'dma_central', 'tmoip_system']
-
-# slider min, max, step -- update with variables from drivers later
-s_min = 0
-s_max = 12
-s_step = 1
-
-s = [0,12,1]
-
 
 ############################################
 channel = get_things("channel")
@@ -45,7 +35,7 @@ def format_things (driver, n, head):
     info_str = [head, html.Br()]
 
     for j in range(len(driver[keys[n]])):           # info from nested dictionaries
-        if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done
+        if type(val_dict[val_keys[j]]) == list:         # to account for dumb unnecessary formating shit i may have done to dictionary
             tmp = ""
             for k in range(len(val_dict[val_keys[j]]) - 1):
                 tmp += val_dict[val_keys[j]][k] + ", "
@@ -81,7 +71,7 @@ def smms (n):               # slider min max step
 
 
 
-app.layout = html.Div([
+app.layout = html.Div([                     # show stuff on webs server
     html.H2("dts thing"), html.Br(),
     html.H4("Drivers:"),
     html.Div([
@@ -163,5 +153,3 @@ def update_tmoip (input_value):
     info_head = html.H4(f'{drivers[n]} {input_value}:', style={'marginLeft':'1%'})
 
     return format_things(driver, input_value, info_head)
-
-
