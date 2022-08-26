@@ -249,6 +249,3 @@ def show_things (things, file=dts):     # (dict of ordered driver info from func
                 print(f"\t{val_keys[j]}: {val_dict[val_keys[j]]}")
 
     print("\n\n")
-
-
-            
