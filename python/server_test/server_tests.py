@@ -9,12 +9,11 @@ this script is function defs for the command line stuff
 
 """
 
-
 from server_test_info import *
-
+from paramiko import SSHClient
 import os
 import iperf3
-import time
+
 
 #################################
 
@@ -26,27 +25,31 @@ def power_on ():
     return 0
 
 ### ssh into board
-def ssh ():
-    return 0
+def ssh (command, server_ip=server_ip, username=username, password=password):
+    ssh = SSHClient
+    ssh.connect(server_ip, username=username, password=password)
+
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(command)
 
 ### run server test on board
-def run_server (seconds=10):
+def run_server ():
     server = iperf3.Server()
-    server.bind_address = asdf
-    server.port = 5201
+    server.bind_address = server_ip
+    server.port = port
     server.verbose = False
 
-    start_time, now = time.time(), 0
-    while now < start_time+seconds:
+    while True:
         server.run()
-        now = time.time()
-    
-    print('stopped')
 
 
 ### run client test on pc (and wait for test to finish)
 def run_client ():
-    return 0
+    client = iperf3.Client()
+    client.server_hostname = client_ip
+    client.port = port
+    client.json_output = False
+    result = client.run()
+
 
 ### run ifconfig on board (and get temp txt file of results)
 def get_ifconfig ():
