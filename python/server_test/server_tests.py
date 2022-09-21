@@ -6,30 +6,44 @@ this script is function defs for the command line stuff
     - run server test on board
     - run client test on pc (and wait for test to finish)
     - run ifconfig on board (and get temp txt file of results)
-
 """
 
 from server_test_info import *
-from paramiko import SSHClient
-import os
-import iperf3
+import iperf3, paramiko, os
+
+#################################
+
 
 
 #################################
 
-#################################
+
+### ssh
+def ssh (command, host=board_ip, username=board_user, password=board_pass):
+    client = paramiko.client.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(host, username=username, password=password)
+    _stdin, _stdout,_stderr = client.exec_command(command)
+
+    output = _stdout.read().decode()
+
+    client.close()
+    return output
+
 
 
 ### turn on power (and wait for board to boot)
-def power_on ():
-    return 0
-
-### ssh into board
-def ssh (command, server_ip=server_ip, username=username, password=password):
-    ssh = SSHClient
-    ssh.connect(server_ip, username=username, password=password)
-
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(command)
+def power_cycle (do=2):                             # 0=off, 1=on, 2=reset (off/on)
+    OFF = 'uom set "relay/outlets/1/state" "false"'
+    ON = 'uom set "relay/outlets/1/state" "true"'
+    
+    if do == 0:         # turn off
+        ssh(OFF, power_ip, power_user, power_pass)
+    elif do == 1:       # turn on
+        ssh(ON, power_ip, power_user, power_pass)
+    else:               # reset (off/on)
+        ssh(OFF, power_ip, power_user, power_pass)
+        ssh(ON, power_ip, power_user, power_pass)    
 
 ### run server test on board
 def run_server ():
