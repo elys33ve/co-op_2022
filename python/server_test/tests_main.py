@@ -14,14 +14,24 @@ from ifconfig_parse import *        # file and parsing stuff
 from server_tests import *          # command line stuff
 
 #################################
+num_tests = 1       # number of tests to do
+
+#################################
 
 
 if __name__ == "__main__":
-    """clear_file(results)
+    """
+    #power_cycle(1)     # turn on
+    
+    # *wait for board to boot*
+    for i in range(num_tests):
+        run_server()
+        run_client()
 
-    er = get_num_errors()
-    append_file(er)
 
-    read_file(results)"""
+    """
 
-    get_ifconfig()
+
+    x = ssh('ifconfig')
+    y = ifconfig_parse(x)
+    print(y)
