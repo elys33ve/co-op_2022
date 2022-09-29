@@ -12,26 +12,31 @@
 
 from ifconfig_parse import *        # file and parsing stuff
 from server_tests import *          # command line stuff
+from time import sleep
+
 
 #################################
-num_tests = 1       # number of tests to do
 
 #################################
 
 
 if __name__ == "__main__":
-    """
-    #power_cycle(1)     # turn on
-    
-    # *wait for board to boot*
+
+    #power_cycle()      # turn on
+
     for i in range(num_tests):
+        print(f"\nrunning test {i+1} of {num_tests}")
+        print(f"server = {server_ip}\tclient = {client_ip}")
+        print(f"test time = {seconds} seconds\n")
+
         run_server()
-        run_client()
+        run_client(seconds=60)
 
+        print(f"\ntest {i+1} complete.\n")
 
-    """
+    
 
+    
+    #x = ssh("ifconfig")
 
-    x = ssh('ifconfig')
-    y = ifconfig_parse(x)
-    print(y)
+    
