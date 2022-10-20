@@ -6,14 +6,13 @@
 # http://127.0.0.1:8000/
 
 from dash import Dash, html, dcc, Input, Output
-from things import SSH, pinout
 
-############################################
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""     REPLACE 'ospinout' AND 'ospininfo' WITH OS COMMANDS ONCE ON RASPI   """
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-PORT = 8000
-HOST = '127.0.0.1'              # dash defult
-
-app = Dash(__name__)
+from things import pinout as ospinout
+from things import pininfo as ospininfo
 
 ############################################    ---     CONSTANTS
 ON = 'on'
@@ -21,25 +20,35 @@ OFF = 'off'
 
 INPUT = 'ip'
 OUTPUT = 'op'
+
+### lists
+GPIO_PINS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27']
+NOT_GPIO_PINS = ['3V3', 'GND', '5V', '--']
+
+### webserver
+PORT = 8000
+HOST = '127.0.0.1'              # dash defult
+
+app = Dash(__name__)
 ############################################    ---     STRING MANIPULATION / LISTS
 
-### GET STRING OF PIN NUMBERS
-def pinout_parse (pinout):
-    idx1 = pinout.index('J8:')
-    idx2 = pinout.index('POE:')
+### GET STRING OF PIN NUMBERS (FROM PINOUT)
+def pinout_str ():
+    idx1 = ospinout.index('J8:')
+    idx2 = ospinout.index('POE:')
 
-    pinout = pinout[idx1:idx2-1]
+    pinout = ospinout[idx1:idx2-1]
 
     return pinout
 
 
 ### GET INFO ABOUT PIN (LVL,FUNC)
-def get_pininfo (pin):                           # get level, fsel, and function of pin
-    pininfo = "level=0 func=I"   ##### TEMP: CHANGE TO OS COMMAND: f"raspi-gpio get {pin}"
+def pininfo_get (pin):                           # get level, fsel, and function of pin
+    pininfo = ospininfo           # f"raspi-gpio get {pin}"
     lvl = pininfo[pininfo.index('level=') + 6]
     func = pininfo[pininfo.index('func=') + 5]
 
-    if lvl == '0':          # for input and output
+    if lvl == '0':   
         lvl = 'dl'
     elif lvl == '1':
         lvl = 'dh'
@@ -52,9 +61,9 @@ def get_pininfo (pin):                           # get level, fsel, and function
     return lvl, func
 
 
-### CREATE LIST OF PIN AND GPIO NUMBERS
-def pinout_list (pinout):
-    pinout = pinout_parse(pinout).replace('J8:', '')
+### CREATE LIST OF PIN AND GPIO NUMBERS (together)
+def pinout_list ():
+    pinout = pinout_str().replace('J8:', '')
     pinout_keys = []
     tmp_list = [] 
     tmp = ''            # current word
@@ -80,7 +89,7 @@ def pinout_list (pinout):
 
 ### GET GPIO NUMS FOR PINS
 def gpio_nums ():
-    pinout_keys = pinout_list(pinout)
+    pinout_keys = pinout_list()
     gpio_list = []
 
     for i in range(len(pinout_keys)):
@@ -102,10 +111,10 @@ def gpio_nums ():
 
 
 ############################################    ---     LISTS
-keys = pinout_list(pinout)
+keys = pinout_list()
 
 ### CREATE TWO LISTS OF PIN NUMBERS (RIGHT AND LEFT)
-def pinout_txt (keys):              # pinout info for plain text
+def pinout_txt ():              # pinout info for plain text
     p1, p2 = [], []
     for i in range(len(keys)):
         if i%2 == 0:
@@ -129,7 +138,7 @@ def checkbox_list ():           # pinout info for check boxes
 
 
 c1, c2 = checkbox_list()        # list of dictionaries for checkboxes (blank txt output)
-p1, p2 = pinout_txt(keys)           # right and left sides of pinout txt
+p1, p2 = pinout_txt()           # right and left sides of pinout txt
 ############################################    ---     VARIABLES
 pinout_top = 130
 pinout_left = 150
@@ -187,16 +196,23 @@ app.layout = html.Div([                     # show stuff on webs server
 
 
 ### CALLBACKS
+last_leftcall = []
+last_rightcall = []
 @app.callback(
     Output(component_id='info_out1', component_property='children'),
     Input(component_id='c1keys', component_property='value')
 )
 def left_side (input_value):
+    
     for i in range(len(input_value)):
-        pinnum = input_value[i][input_value[i].index(':'+1):]
-        lvl, func = get_pininfo(pinnum)
+        pinnum = input_value[i][input_value[i].index(':')+1:]   # get gpio number
+        lvl, func = pininfo_get(pinnum)                         # get lvl and func
+
+        if pinnum in GPIO_PINS:
+
         print(f"pin {pinnum}, {lvl} {func}")
-    return input_value
+        last_callback = input_value
+    return 
 
 @app.callback(  
     Output(component_id='info_out2', component_property='children'),
@@ -210,5 +226,6 @@ def right_side (input_value):
 ############################################    ---     MAIN
 
 if __name__ == "__main__":
-    
     app.run(debug=True, port=PORT, host=HOST)
+
+
