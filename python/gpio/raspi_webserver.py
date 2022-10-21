@@ -4,13 +4,14 @@
 # dash html.P style references/examples:    https://www.programcreek.com/python/example/100614/dash_html_components.P
 
 # http://127.0.0.1:8000/
+# os.popen("<command>").read()
+
+# this python script will be run on a raspberry pi 4
+# it should be able to run a simple webserver to control
+# the states of the pins (on/off, input/output) remotely
 
 from dash import Dash, html, dcc, Input, Output
 from raspi_lists import *
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-"""     REPLACE 'ospinout' AND 'ospininfo' WITH OS COMMANDS ONCE ON RASPI   """
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ############################################    ---     CONSTANTS
 ON = 'dh'
@@ -24,11 +25,6 @@ PORT = 8000
 HOST = '127.0.0.1'              # dash defult
 
 app = Dash(__name__)
-############################################
-
-
-
-
 ############################################    ---     VARIABLES
 pinout_top = 150
 pinout_left = 180
