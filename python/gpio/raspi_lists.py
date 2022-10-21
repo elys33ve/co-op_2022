@@ -1,10 +1,8 @@
 ### functions for string and list manipulation stuff
 # (not all of this is used, this script was just an attempt to organize stuff a bit while testing)
+
 import os
-from dash import Dash, html, dcc, Input, Output
-from things import pinout as ospinout
-from things import pininfo as ospininfo
-#from things import SSH, gpio_ssh
+from dash import html
 
 ############################################
 """
@@ -31,6 +29,8 @@ OFF = 'dl'
 INPUT = 'ip'
 OUTPUT = 'op'
 
+ospinout = os.popen(f"pinout").read()
+
 ############################################    ---     usable functions
 
 ### GET INFO ABOUT PIN (LVL,FUNC)
@@ -39,7 +39,7 @@ def pininfo_get (pin):                           # get level, fsel, and function
     if pin not in GPIO_PINS:    # if pin is not gpio pin
         return '-1', '-1'
     
-    pininfo = ospininfo(pin)    # f"raspi-gpio get {pin}"
+    pininfo = os.popen(f"raspi-gpio get {pin}").read()
     lvl = pininfo[pininfo.index('level=') + 6]
     func = pininfo[pininfo.index('func=') + 5]
 
@@ -182,12 +182,12 @@ def set_lvl (pins, lr):      # arg is list of gpio numbers (from input_value), r
         
         if gpio[i] in pins and lvl != '-1':    # if pin checkboxed and is gpio
             if lvl != ON:
-                print(f"turn on pin {gpio[i]} -- {lr} side")
-                ### USE OS CMD TO SET PIN
+                #print(f"turn on pin {gpio[i]} -- {lr} side")
+                os.popen(f"raspi-gpio set {gpio[i]} dh")            # turn on
         elif gpio[i] not in pins and lvl != '-1':   # if pin not checkboxed and is gpio
             if lvl != OFF:
-                print(f"turn off pin {gpio[i]} -- {lr} side")
-                ### USE OS CMD TO SET PIN
+                #print(f"turn off pin {gpio[i]} -- {lr} side")
+                os.popen(f"raspi-gpio set {gpio[i]} dl")            # turn off
 
 
 
@@ -202,13 +202,13 @@ def set_func (pins, lr):
         func = pininfo_get(gpio[i])[1]
         
         if gpio[i] in pins and func != '-1':    # if pin checkboxed and is gpio
-            if func != INPUT:
-                print(f"turn input pin {gpio[i]} -- {lr} side")
-                ### USE OS CMD TO SET PIN
+            if func == INPUT:
+                #print(f"turn input pin {gpio[i]} -- {lr} side")
+                os.popen(f"raspi-gpio set {gpio[i]} op")            # set output
         elif gpio[i] not in pins and func != '-1':   # if pin not checkboxed and is gpio
-            if func != OUTPUT:
-                print(f"turn output pin {gpio[i]} -- {lr} side")
-                ### USE OS CMD TO SET PIN
+            if func == OUTPUT:
+                #print(f"turn output pin {gpio[i]} -- {lr} side")
+                os.popen(f"raspi-gpio set {gpio[i]} ip")            # set input
 
 
 
