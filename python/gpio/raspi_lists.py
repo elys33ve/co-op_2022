@@ -1,13 +1,27 @@
-### functions for string and list manipulation
+### functions for string and list manipulation stuff
 # (not all of this is used, this script was just an attempt to organize stuff a bit while testing)
-
-from re import L
+import os
 from dash import Dash, html, dcc, Input, Output
 from things import pinout as ospinout
 from things import pininfo as ospininfo
 #from things import SSH, gpio_ssh
 
-### lists
+############################################
+"""
+pininfo_get(pin) -- return lvl and func of pin
+
+pinout_string() -- get str of just pins from pinout cmd output
+pinout_labels() -- list of pin and gpio numbers to display
+pinout_gpio() -- list of gpio numbers
+pinout_disp() -- list of pin labels to display using html.P()
+checkbox_list() -- list of dictionaries for checkboxes
+
+set_lvl(pins, lr) -- set pin output levels (on/off)
+set_func(pins, lr) -- set pin functions (input/output)
+pin_auto_set() -- get all pins func and lvl to auto check correct boxes
+pin_state(lr) -- list state of pins to display
+"""
+############################################    ---     constants
 GPIO_PINS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27']
 NOT_GPIO_PINS = ['3V3', 'GND', '5V', '--']
 
@@ -254,3 +268,5 @@ def pin_state (lr):
         
     return states
         
+
+
