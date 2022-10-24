@@ -7,6 +7,11 @@
 # it should be able to run a simple webserver to control
 # the states of the pins (on/off, input/output) remotely
 
+# rsync -a /home/fiona/projects/fi_src/python/pi_gpio_webserver fart@pigpio4:/home/fart
+# rm -r pi_gpio_webserver
+# cd pi_gpio_webserver/ && rm gpiostrs.py && rm -r __pycache__
+
+
 from dash import Dash, html, dcc, Input, Output
 from gpio_functions import *
 
@@ -19,7 +24,10 @@ OUTPUT = 'op'
 
 ### webserver
 PORT = 8000
-HOST = '127.0.0.1'              # dash defult
+if Test == True:
+    HOST = '127.0.0.1'              # dash defult
+else:
+    HOST = '192.168.86.105'
 
 app = Dash(__name__)
 ############################################    ---     DISPLAY FORMATTING
@@ -41,6 +49,8 @@ onoff_offset = inout_offset*2
 font_size = 13
 line_space = 6.95
 letter_space = '-0.5px'
+stv = -150
+sth = -400
 
 ############################################    ---     VARIABLES
 # list of pins to initially checkmark
@@ -112,45 +122,6 @@ app.layout = html.Div([                     # show stuff on webserver
             'position':'absolute', 
             'line-height':4}
             ),
-    
-    html.Div(           # pin state left side (odd numbers) - on/off
-        left_state_onoff, style={
-            'top':l_vert+7, 
-            'left':l_hori+138, 
-            'position':'absolute', 
-            'textAlign':'right', 
-            'line-height':line_space,
-            'color': 'red',
-            'font-size':font_size}
-            ),
-    html.Div(           # pin state right side (even numbers) - on/off
-        right_state_onoff, style={
-            'top':r_vert+31, 
-            'left':r_hori+80, 
-            'position':'absolute', 
-            'line-height':line_space,
-            'color': 'red',
-            'font-size':font_size}
-            ),
-    html.Div(           # pin state left side (odd numbers) - in/out
-        left_state_inout, style={
-            'top':l_vert+7, 
-            'left':l_hori+70, 
-            'position':'absolute', 
-            'textAlign':'right', 
-            'line-height':line_space,
-            'color': 'red',
-            'font-size':font_size}
-            ),
-    html.Div(           # pin state right side (even numbers) - in/out
-        right_state_inout, style={
-            'top':r_vert+31, 
-            'left':r_hori+130, 
-            'position':'absolute', 
-            'line-height':line_space,
-            'color': 'red',
-            'font-size':font_size}
-            ),
 
 #------ on / off
     html.Div([          # pinout left side (odd dumbers)
@@ -188,6 +159,47 @@ app.layout = html.Div([                     # show stuff on webserver
 ])
 
 
+### PIN STATE OUTPUTS
+
+l_state_oo = html.Div(           # pin state left side (odd numbers) - on/off
+    left_state_onoff, style={
+        'top':l_vert+stv+7, 
+        'left':l_hori+sth+197, 
+        'position':'absolute', 
+        'textAlign':'right', 
+        'line-height':line_space,
+        'color': 'red',
+        'font-size':font_size}
+        )
+r_state_oo = html.Div(           # pin state right side (even numbers) - on/off
+    right_state_onoff, style={
+        'top':r_vert+stv+33, 
+        'left':r_hori+sth+21, 
+        'position':'absolute', 
+        'line-height':line_space,
+        'color': 'red',
+        'font-size':font_size}
+        ),
+l_state_io = html.Div(           # pin state left side (odd numbers) - in/out
+    left_state_inout, style={
+        'top':l_vert+stv+7, 
+        'left':l_hori+sth+180, 
+        'position':'absolute', 
+        'textAlign':'right', 
+        'line-height':line_space,
+        'color': 'red',
+        'font-size':font_size}
+        ),
+r_state_io = html.Div(           # pin state right side (even numbers) - in/out
+    right_state_inout, style={
+        'top':r_vert+stv+32, 
+        'left':r_hori+sth+20, 
+        'position':'absolute', 
+        'line-height':line_space,
+        'color': 'red',
+        'font-size':font_size}
+        ),
+
 ############################################    ---     CALLBACKS
 
 ### CALLBACKS
@@ -200,6 +212,7 @@ def left_onoff (input_value):
     global left_state_onoff
     set_lvl(input_value, 'left')                # change lvl
     left_state_onoff = pin_state('left')[0]     # recheck state for display
+    return l_state_oo
 
 @app.callback(
     Output(component_id='right_onoff', component_property='children'),
@@ -209,6 +222,7 @@ def right_onoff (input_value):
     global right_state_onoff
     set_lvl(input_value, 'right')
     right_state_onoff = pin_state('right')[0]
+    return r_state_oo
 
 
 
@@ -221,6 +235,7 @@ def left_inout (input_value):
     global left_state_inout
     set_func(input_value, 'left')               # change func
     left_state_inout = pin_state('left')[1]     # recheck state for display
+    return l_state_io
 
 @app.callback(
     Output(component_id='right_inout', component_property='children'),
@@ -230,11 +245,13 @@ def right_inout (input_value):
     global right_state_inout
     set_func(input_value, 'right')
     right_state_inout = pin_state('right')[1]
+    return r_state_io
 
 ############################################    ---     MAIN
 
 if __name__ == "__main__":
     app.run(debug=True, port=PORT, host=HOST)
+
 
 
 
