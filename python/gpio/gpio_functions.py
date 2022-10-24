@@ -1,7 +1,7 @@
 ### functions for string and list manipulation stuff
 # (not all of this is used, this script was just an attempt to organize stuff a bit while testing)
 
-Test = True
+Test = False
 
 ############################################
 import os
@@ -291,5 +291,7 @@ def pin_state (lr):
         
     return states_onoff, states_inout
         
+
+
 
 
