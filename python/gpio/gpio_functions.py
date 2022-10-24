@@ -1,8 +1,14 @@
 ### functions for string and list manipulation stuff
 # (not all of this is used, this script was just an attempt to organize stuff a bit while testing)
 
+Test = True
+
+############################################
 import os
 from dash import html
+
+if Test == True:        # py file with pinout and pininfo as strings
+    from gpiostrs import pinout, pininfo_str
 
 ############################################
 """
@@ -29,7 +35,11 @@ OFF = 'dl'
 INPUT = 'ip'
 OUTPUT = 'op'
 
-ospinout = os.popen(f"pinout").read()
+# pc vs raspi tests
+if Test == True:
+    ospinout = pinout
+else:
+    ospinout = os.popen(f"pinout").read()
 
 ############################################    ---     usable functions
 
@@ -39,7 +49,11 @@ def pininfo_get (pin):                           # get level, fsel, and function
     if pin not in GPIO_PINS:    # if pin is not gpio pin
         return '-1', '-1'
     
-    pininfo = os.popen(f"raspi-gpio get {pin}").read()
+    if Test == True:
+        pininfo = pininfo_str
+    else:
+        pininfo = os.popen(f"raspi-gpio get {pin}").read()
+
     lvl = pininfo[pininfo.index('level=') + 6]
     func = pininfo[pininfo.index('func=') + 5]
 
@@ -246,27 +260,36 @@ def pin_state (lr):
     elif lr == 'right' or lr == 'r':
         gpio = right_gpio
 
-    states = []
+    states_onoff = []
+    states_inout = []
 
     for i in range(len(gpio)):
         pin = gpio[i]
         lvl, func = pininfo_get(pin)
 
         if lvl == ON:       # set output words
-            onoff = 'ON'
+            #onoff = 'ON'
+            onoff = '(on)'
         else:
-            onoff = 'OFF'
+            #onoff = 'OFF'
+            onoff = '(off)'
         if func == INPUT:
-            inout = 'INPUT'
+            #inout = 'INPUT'
+            inout = '(input)'
         else:
-            inout = 'OUTPUT'
+            #inout = 'OUTPUT'
+            inout = '(output)'
 
         if lvl != '-1':     # set/add output strings to list
-            states.append(html.P(f"{inout} : {onoff}"))
+            states_onoff.append(html.P(onoff))
         else:
-            states.append(html.Br())       # skip if not gpio pin
+            states_onoff.append(html.Br())       # skip if not gpio pin
+        if lvl != '-1':     # set/add output strings to list
+            states_inout.append(html.P(inout))
+        else:
+            states_inout.append(html.Br())       # skip if not gpio pin
         
-    return states
+    return states_onoff, states_inout
         
 
 
