@@ -7,10 +7,10 @@
 # it should be able to run a simple webserver to control
 # the states of the pins (on/off, input/output) remotely
 
-# rsync -a /home/fiona/projects/fi_src/python/pi_gpio_webserver fart@pigpio4:/home/fart
 # rm -r pi_gpio_webserver
+# rsync -a /home/fiona/projects/fi_src/python/pi_gpio_webserver fart@pigpio4:/home/fart
 # cd pi_gpio_webserver/ && rm gpiostrs.py && rm -r __pycache__
-
+# http://192.168.86.105:8000/
 
 from dash import Dash, html, dcc, Input, Output
 from gpio_functions import *
@@ -52,6 +52,12 @@ letter_space = '-0.5px'
 stv = -150
 sth = -400
 
+# message to display stuff
+msg_vert = 570
+msg_hori = 200
+out_msg = [
+    html.P("if you change the lvl (on/off) of an input, dont do that rn, itll probably be mad"), 
+    html.P("i dont think it re-checks input lvl if you change from output to input")]
 ############################################    ---     VARIABLES
 # list of pins to initially checkmark
 l_onpins = pin_auto_set()[0]    # on / off
@@ -61,11 +67,12 @@ l_inpins = pin_auto_set()[2]    # input / output
 r_inpins = pin_auto_set()[3]
 
 # list of pin states to display
+"""
 left_state_onoff = pin_state('left')[0]
 right_state_onoff = pin_state('right')[0]
-
 left_state_inout = pin_state('left')[1]
 right_state_inout = pin_state('right')[1]
+"""
 ############################################    ---     WEBSERVER
 
 ### WEBSERVER
@@ -79,7 +86,13 @@ app.layout = html.Div([                     # show stuff on webserver
             'top':center_vert-100, 'left':center_hori+90, 
             'position':'absolute', 'textAlign':'center'}
         ),
-    html.Div(                       # right on/off
+    html.Div(                       # message
+        out_msg,style={
+            'top':msg_vert, 'left':msg_hori, 
+            'position':'absolute', 'textAlign':'center', 'line-height':line_space}
+    ),
+
+    html.Div(                       # left on/off
         html.P('on/off'),style={
             'top':center_vert-45, 'left':l_hori+onoff_offset+92, 
             'position':'absolute', 'textAlign':'center',
@@ -126,7 +139,8 @@ app.layout = html.Div([                     # show stuff on webserver
 #------ on / off
     html.Div([          # pinout left side (odd dumbers)
         dcc.Checklist(
-            options=left_checks, value=l_onpins, inline=False, id='left_onoff_checks', 
+            options=left_checks, value=l_onpins, inline=False, 
+            id='left_onoff_checks', 
             labelStyle = dict(display='block')      # not inline
         ),
         html.Div(id='left_onoff')
@@ -134,7 +148,8 @@ app.layout = html.Div([                     # show stuff on webserver
 
     html.Div([          # pinout right side (even numbers)
         dcc.Checklist(
-            options=right_checks, value=r_onpins, inline=False, id='right_onoff_checks',
+            options=right_checks, value=r_onpins, inline=False, 
+            id='right_onoff_checks',
             labelStyle = dict(display='block')      # not inline
         ),
         html.Div(id='right_onoff')
@@ -143,7 +158,8 @@ app.layout = html.Div([                     # show stuff on webserver
 #------ input / output
     html.Div([          # pinout left side (odd dumbers)
         dcc.Checklist(
-            options=left_checks, value=l_inpins, inline=False, id='left_inout_checks', 
+            options=left_checks, value=l_inpins, inline=False, 
+            id='left_inout_checks', 
             labelStyle = dict(display='block')      # not inline
         ),
         html.Div(id='left_inout')
@@ -151,7 +167,8 @@ app.layout = html.Div([                     # show stuff on webserver
 
     html.Div([          # pinout right side (even numbers)
         dcc.Checklist(
-            options=right_checks, value=r_inpins, inline=False, id='right_inout_checks',
+            options=right_checks, value=r_inpins, inline=False, 
+            id='right_inout_checks',
             labelStyle = dict(display='block')      # not inline
         ),
         html.Div(id='right_inout')
@@ -160,9 +177,10 @@ app.layout = html.Div([                     # show stuff on webserver
 
 
 ### PIN STATE OUTPUTS
-
-l_state_oo = html.Div(           # pin state left side (odd numbers) - on/off
-    left_state_onoff, style={
+def l_state_oo (inp):
+    states = pin_state_inp(inp, 'left', 'onoff')
+    states_out = html.Div(           # pin state left side (odd numbers) - on/off
+    states, style={
         'top':l_vert+stv+7, 
         'left':l_hori+sth+197, 
         'position':'absolute', 
@@ -171,17 +189,23 @@ l_state_oo = html.Div(           # pin state left side (odd numbers) - on/off
         'color': 'red',
         'font-size':font_size}
         )
-r_state_oo = html.Div(           # pin state right side (even numbers) - on/off
-    right_state_onoff, style={
+    return states_out
+def r_state_oo (inp):
+    states = pin_state_inp(inp, 'right', 'onoff')
+    states_out = html.Div(           # pin state right side (even numbers) - on/off
+    states, style={
         'top':r_vert+stv+33, 
         'left':r_hori+sth+21, 
         'position':'absolute', 
         'line-height':line_space,
         'color': 'red',
         'font-size':font_size}
-        ),
-l_state_io = html.Div(           # pin state left side (odd numbers) - in/out
-    left_state_inout, style={
+        )
+    return states_out
+def l_state_io (inp):
+    states = pin_state_inp(inp, 'left', 'inout')
+    states_out = html.Div(           # pin state left side (odd numbers) - in/out
+    states, style={
         'top':l_vert+stv+7, 
         'left':l_hori+sth+180, 
         'position':'absolute', 
@@ -189,16 +213,20 @@ l_state_io = html.Div(           # pin state left side (odd numbers) - in/out
         'line-height':line_space,
         'color': 'red',
         'font-size':font_size}
-        ),
-r_state_io = html.Div(           # pin state right side (even numbers) - in/out
-    right_state_inout, style={
+        )
+    return states_out
+def r_state_io (inp):
+    states = pin_state_inp(inp, 'right', 'inout')
+    states_out = html.Div(           # pin state right side (even numbers) - in/out
+    states, style={
         'top':r_vert+stv+32, 
         'left':r_hori+sth+20, 
         'position':'absolute', 
         'line-height':line_space,
         'color': 'red',
         'font-size':font_size}
-        ),
+        )
+    return states_out
 
 ############################################    ---     CALLBACKS
 
@@ -209,20 +237,16 @@ r_state_io = html.Div(           # pin state right side (even numbers) - in/out
     Input(component_id='left_onoff_checks', component_property='value')
 )
 def left_onoff (input_value):
-    global left_state_onoff
     set_lvl(input_value, 'left')                # change lvl
-    left_state_onoff = pin_state('left')[0]     # recheck state for display
-    return l_state_oo
+    return l_state_oo(input_value)
 
 @app.callback(
     Output(component_id='right_onoff', component_property='children'),
     Input(component_id='right_onoff_checks', component_property='value')
 )
 def right_onoff (input_value):
-    global right_state_onoff
     set_lvl(input_value, 'right')
-    right_state_onoff = pin_state('right')[0]
-    return r_state_oo
+    return r_state_oo(input_value)
 
 
 
@@ -232,25 +256,29 @@ def right_onoff (input_value):
     Input(component_id='left_inout_checks', component_property='value')
 )
 def left_inout (input_value):
-    global left_state_inout
     set_func(input_value, 'left')               # change func
-    left_state_inout = pin_state('left')[1]     # recheck state for display
-    return l_state_io
+    return l_state_io(input_value)
 
 @app.callback(
     Output(component_id='right_inout', component_property='children'),
     Input(component_id='right_inout_checks', component_property='value')
 )
 def right_inout (input_value):
-    global right_state_inout
     set_func(input_value, 'right')
-    right_state_inout = pin_state('right')[1]
-    return r_state_io
+    return r_state_io(input_value)
+
 
 ############################################    ---     MAIN
 
 if __name__ == "__main__":
     app.run(debug=True, port=PORT, host=HOST)
+
+    """
+    gpio = right_gpio
+    for i in range(len(gpio)):
+        lvl, func = pininfo_get(gpio[i])
+        print(f"{gpio[i]}: {lvl}--{func}")
+    """
 
 
 
