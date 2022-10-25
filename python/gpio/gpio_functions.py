@@ -1,14 +1,14 @@
 ### functions for string and list manipulation stuff
 # (not all of this is used, this script was just an attempt to organize stuff a bit while testing)
 
-Test = False
+Test = True
 
 ############################################
 import os
 from dash import html
 
 if Test == True:        # py file with pinout and pininfo as strings
-    from gpiostrs import pinout, pininfo_str
+    from gpiostrs import *
 
 ############################################
 """
@@ -50,7 +50,7 @@ def pininfo_get (pin):                           # get level, fsel, and function
         return '-1', '-1'
     
     if Test == True:
-        pininfo = pininfo_str
+        pininfo = pininfo_str(pin)
     else:
         pininfo = os.popen(f"raspi-gpio get {pin}").read()
 
@@ -194,19 +194,25 @@ def set_lvl (pins, lr):      # arg is list of gpio numbers (from input_value), r
     for i in range(len(gpio)):
         lvl = pininfo_get(gpio[i])[0]
         
-        if gpio[i] in pins and lvl != '-1':    # if pin checkboxed and is gpio
+        if gpio[i] in pins and lvl != '-1':         # if pin checkboxed and is gpio -- turn on
             if lvl != ON:
-                #print(f"turn on pin {gpio[i]} -- {lr} side")
-                os.popen(f"raspi-gpio set {gpio[i]} dh")            # turn on
-        elif gpio[i] not in pins and lvl != '-1':   # if pin not checkboxed and is gpio
+                if Test == True:
+                    #print(f"turn on pin {gpio[i]} -- {lr} side")
+                    pin_onoff(gpio[i],1)
+                else:
+                    os.popen(f"raspi-gpio set {gpio[i]} dh")            # turn on
+        elif gpio[i] not in pins and lvl != '-1':   # if pin not checkboxed and is gpio -- turn off
             if lvl != OFF:
-                #print(f"turn off pin {gpio[i]} -- {lr} side")
-                os.popen(f"raspi-gpio set {gpio[i]} dl")            # turn off
+                if Test == True:
+                    #print(f"turn off pin {gpio[i]} -- {lr} side")
+                    pin_onoff(gpio[i],0)
+                else:
+                    os.popen(f"raspi-gpio set {gpio[i]} dl")            # turn off
 
 
 
 ### SET INPUT/OUTPUT PINS
-def set_func (pins, lr):
+def set_func (pins, lr):            # pins = input_value
     if lr == 'left' or lr == 'l':
         gpio = left_gpio
     elif lr == 'right' or lr == 'r':
@@ -215,15 +221,20 @@ def set_func (pins, lr):
     for i in range(len(gpio)):
         func = pininfo_get(gpio[i])[1]
         
-        if gpio[i] in pins and func != '-1':    # if pin checkboxed and is gpio
+        if gpio[i] in pins and func != '-1':        # if pin checkboxed and is gpio -- set output
             if func == INPUT:
-                #print(f"turn input pin {gpio[i]} -- {lr} side")
-                os.popen(f"raspi-gpio set {gpio[i]} op")            # set output
-        elif gpio[i] not in pins and func != '-1':   # if pin not checkboxed and is gpio
+                if Test == True:
+                    #print(f"turn input pin {gpio[i]} -- {lr} side")
+                    pin_inout(gpio[i],'op')
+                else:
+                    os.popen(f"raspi-gpio set {gpio[i]} op")            # set output
+        elif gpio[i] not in pins and func != '-1':   # if pin not checkboxed and is gpio -- set input
             if func == OUTPUT:
-                #print(f"turn output pin {gpio[i]} -- {lr} side")
-                os.popen(f"raspi-gpio set {gpio[i]} ip")            # set input
-
+                if Test == True:
+                    #print(f"turn output pin {gpio[i]} -- {lr} side")
+                    pin_inout(gpio[i],'ip')
+                else:
+                    os.popen(f"raspi-gpio set {gpio[i]} ip")            # set input
 
 
 
@@ -252,8 +263,8 @@ def pin_auto_set ():
     return l_onpins, r_onpins, l_inpins, r_inpins
 
 
-
-### CHECK PIN STATE FOR DISPLAY
+""" --- i dont think this is being used rn --- """
+### CHECK PIN STATE FOR DISPLAY --- by checking cmd line value
 def pin_state (lr):
     if lr == 'left' or lr == 'l':
         gpio = left_gpio
@@ -280,18 +291,65 @@ def pin_state (lr):
             #inout = 'OUTPUT'
             inout = '(output)'
 
-        if lvl != '-1':     # set/add output strings to list
+        if lvl != '-1':     # set/add output strings to list -- on/off
             states_onoff.append(html.P(onoff))
         else:
             states_onoff.append(html.Br())       # skip if not gpio pin
-        if lvl != '-1':     # set/add output strings to list
+        if lvl != '-1':     # set/add output strings to list -- in/out
             states_inout.append(html.P(inout))
         else:
             states_inout.append(html.Br())       # skip if not gpio pin
         
     return states_onoff, states_inout
+
+    
+""" --- for testing so delete later --- """
+### RETURN LIST OF INPUTS TEST
+def state_disp (inp):
+    gpio = right_gpio
+    t = []
+
+    for i in gpio:
+        if i in inp:
+            t.append('output')
+        else:
+            t.append('input')
+    for i in t:
+        print(i)
+    print('\n\n')
+
+
+### CHECK PIN STATE FOR DISPLAY --- by checking input list
+def pin_state_inp (inp, lr, lf):    # input list, left/right, lvl/func
+    states = []
+
+    if lr == 'left' or lr == 'l':       # right / left
+        gpio = left_gpio
+    elif lr == 'right' or lr == 'r':
+        gpio = right_gpio
+
+    if lf == 'onoff' or lf == 'o':      # inout / onoff
+        y = '(on)'
+        n = '(off)'    
+    elif lf == 'inout' or lf == 'i':
+        y = '(output)'
+        n = '(input)'
+
+    for i in range(len(gpio)):
+        pin = gpio[i]
+
+        if pin in NOT_GPIO_PINS:
+            checked = -1
+        elif pin in inp:            # on / output
+            checked = 1
+        else:                       # off / input
+            checked = 0
+
+        if checked == 1:     # set/add strings to list for updated disp
+            states.append(html.P(y))
+        elif checked == 0:
+            states.append(html.P(n))
+        else:
+            states.append(html.Br())       # skip if not gpio pin
         
-
-
-
-
+    return states
