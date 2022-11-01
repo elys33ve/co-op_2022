@@ -1,7 +1,7 @@
 # variables for the server test scripts
-# - ip addresses of the different things
-# - commands
-# - notes
+# - ip addresses
+# - ssh class
+# - commands and notes
 
 # command line commands
 """
@@ -13,42 +13,30 @@ uom set "relay/outlets/1/state" "true"
     iperf3 server and client:
 iperf3 -B IPADDRESS -s
 iperf3 -u -B IPCLIENT -c IPSERVER -b 400m -t 600 -l 1412 -Z
-
-    kill server that shouldnt be running but is for some reason:
-ps aux | grep iperf
-kill PID
-
-    modify wired ip address on board:
-sudo nano /etc/systemd/network/eth1.network
-# modify Address and save
-sudo reboot
-
 """
 
-from time import sleep
-import paramiko, os
+import paramiko
 
 ############################################ --- files
 ifconfig_results = {}
-ifconfigtxt = "ifconfig_results.txt"
+ifconfigtxt = "iperf3py_results.txt"
 
 a = open(ifconfigtxt, 'a')      # append
 r = open(ifconfigtxt, 'r')      # read
-#w = open(ifconfigtxt, 'w')      # write (overwrites)
 ############################################ --- ip addresses
-board_ip1 = '10.10.10.3'
-board_ip2 = '10.10.10.4'
-server_ip = '11.11.11.3'
-client_ip = '11.11.11.4'
-power_ip = '10.10.10.2'
+power_ip = '10.10.10.2'     # powerstrip -> pc
+board_ip1 = '10.10.10.3'    # board -> pc
+board_ip2 = '10.10.10.4'    # board -> pc
+server_ip = '11.11.11.3'    # board -> board
+client_ip = '11.11.11.4'    # board -> board
 
-eth = 'eth1'            # ethernet port for ifconfig results
+eth = 'eth1'        # ethernet port for ifconfig results
 ############################################ --- ssh
-num_tests = 700     # number of tests to do
+num_tests = 700     # number of tests
 seconds = 10        # number of seconds tests take
 mbps = 400          # mb per sec
 outlet1 = 0         # number of powerstrip outlet 1
-outlet2 = 1         # number of powerstrip outlet
+outlet2 = 1         # number of powerstrip outlet 2
 
 port = 5201         # 5201 is defult for iperf3
 ############################################ --- functions/classes
@@ -89,38 +77,3 @@ class SSH:
             output = f"_stderr = {_stderr}\n_stdout = {_stdout}"
             client.close()
             return output
-
-
-########################################### -- unused functions i think
-
-### get info from ifconfig string
-def get_info (term, ifconfig):
-    errs = []
-    while term in ifconfig:
-        idx = ifconfig.index(term) + len(term)+1                # idx first error result
-        ifconfig = ifconfig.replace(ifconfig[0:idx], '')        # replace everything before
-        idx = ifconfig.index(" ")                           # idx next space
-        errs.append(ifconfig[0:idx])                        # add everything before to list (errors number)
-    return errs
-
-### gets errors number results from ifconfig output and adds to dict
-def ifconfig_parse (num='x'):
-    rxp = get_info("RX packets")
-    rxe = get_info("RX errors")
-    txp = get_info("TX packets")
-    txe = get_info("TX errors")
-    ifconfig_results[num] = [rxp, rxe, txp, txe]
-
-### print and format info from ifconfig
-def print_info ():
-    err = ["RX packets", "RX errors", "TX packets", "TX errors"]
-    keys = list(ifconfig_results)
-
-    for i in range(len(ifconfig_results)):
-        print(f"\n{keys[i]}")
-        for j in range(len(ifconfig_results[keys[i]])):
-            print(f"\t{err[j]}: {ifconfig_results[keys[i]][j]}")
-
-############################################
-
-
