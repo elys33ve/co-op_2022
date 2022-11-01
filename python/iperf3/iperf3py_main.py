@@ -8,8 +8,9 @@
 #   - run ifconfig on board
 #   - write ifconfig results to txt file
 
+import os
 from time import sleep
-from iperf3_info import *          # command line stuff
+from iperf3py_info import *          # command line stuff
 
 #################################
 ssh_server = SSH(host=board_ip1, username='alarm', password='alarm')
@@ -51,6 +52,7 @@ def wipe_file (backup=True):
         app.close()
     w = open(ifconfigtxt, 'w')
     w.close()
+
 #################################                               --- other helper functions
 ### kill running server if it doesnt automatically kill
 def kill_server ():
@@ -58,72 +60,13 @@ def kill_server ():
     if 'iperf3' in grep:
         ssh_server.ssh("pkill iperf3")
 
-### reset
+### reset power
 def onoff (outlet1=outlet1, outlet2=outlet2):
     ssh_powerswitch.ssh(f'uom set "relay/outlets/{outlet1}/state" "false"')     # outlet 1 off 
     ssh_powerswitch.ssh(f'uom set "relay/outlets/{outlet1}/state" "true"')      # outlet 1 on
     ssh_powerswitch.ssh(f'uom set "relay/outlets/{outlet2}/state" "false"')     # outlet 2 off 
     ssh_powerswitch.ssh(f'uom set "relay/outlets/{outlet2}/state" "true"')      # outlet 2 on
-#################################                               --- tests
 
-def test1 ():
-    #wipe_file()
-    a.write(header)
-
-    i=0
-    print(f"power cycle...\n")
-    onoff()
-    sleep(30)           # takes about 25ish seconds to boot (but ssh times out at 20)
-    
-    #kill_server()
-    #iperf3 -B 10.10.10.3 -s
-    #iperf3 -B 10.10.10.4 -s
-    print(f"\nrunning test {i+1} of {num_tests}")
-    print(f"starting server on {server_ip}...\n")
-    ssh_server.ssh(f"iperf3 -B {server_ip} -s")
-
-    sleep(5)            # give the server time to get ready
-
-    #iperf3 -u -B 10.10.10.4 -c 10.10.10.3 -b 400m -t 20 -l 1412 -Z
-    #iperf3 -u -B 10.10.10.3 -c 10.10.10.4 -b 400m -t 20 -l 1412 -Z
-    print(f"connecting to server from {client_ip}...\n")
-    ssh_client.ssh(f"iperf3 -u -B {client_ip} -c {server_ip} -b {mbps}m -t {seconds} -l 1412 -Z")
-    sleep(seconds)      # wait for test to finish
-    print(f"\ntest {i+1} complete.\n") 
-
-    client_ifconfig = ssh_client.ssh('ifconfig', readout=False)
-    #server_ifconfig = ssh_server.ssh('ifconfig', readout=False)
-
-    ifconfig = ifconfig_list(client_ifconfig)
-    write_results(ifconfig)
-    a.close()
-
-
-def test2():
-    wipe_file(backup=False)
-    a.write(header)
-
-    for i in range(num_tests):
-        print(f"power cycle...\n")
-        onoff()
-        sleep(30)           # takes about 25ish seconds to boot (but ssh times out at 20)
-        
-        print(f"\nrunning test {i+1} of {num_tests}")
-        print(f"starting server on {server_ip}...\n")
-        ssh_server.ssh(f"iperf3 -B {server_ip} -s")
-
-        sleep(5)            # give the server time to get ready
-
-        print(f"connecting to server from {client_ip}")
-        print(f"running test for {seconds} seconds...\n")
-        ssh_client.ssh(f"iperf3 -u -B {client_ip} -c {server_ip} -b {mbps}m -t {seconds} -l 1412 -Z")
-        sleep(seconds)      # wait for test to finish
-        print(f"\ntest {i+1} complete.\n") 
-
-        client_ifconfig = ssh_client.ssh('ifconfig', readout=False)
-        ifconfig = ifconfig_list(client_ifconfig)
-        write_results(ifconfig)
-    a.close()
 #################################
 
 if __name__ == "__main__":
