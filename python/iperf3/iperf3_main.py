@@ -9,7 +9,7 @@
 #   - write ifconfig results to txt file
 
 from time import sleep
-from server_test_info import *          # command line stuff
+from iperf3_info import *          # command line stuff
 
 #################################
 ssh_server = SSH(host=board_ip1, username='alarm', password='alarm')
