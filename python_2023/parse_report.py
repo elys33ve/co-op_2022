@@ -1,5 +1,5 @@
 # generate report from test data file
-from functions import *
+from parse_functions import *
 
 filename = "report_5_10_2023.txt"           # testfile
 #filename = "test_input.txt"
@@ -76,31 +76,60 @@ def make_pcmout_bert():
 
 ### get channel bits and errs from pcmout bert
 ### { "ch0":[ [bits, errs], [bits, errs], ... ], "ch1":... }
-def get_pcmout_bert():
+def get_pcmout_bert(channels="all"):
     global pcmout_bert
     # create if dict is empty
     if len(pcmout_bert) == 0:
         make_pcmout_bert()
-    
-    # get values for each channel
+
+
+    # get values for channels
     while file[idx][0] == '-': nextline()
     keys = list(pcmout_bert)
+    nextline(-1)
 
-        # bits
-    bits, i = [], 0
-    while file[idx][0] != '-' and i < N_CH:
-        bits.append(file[idx].strip())
+    # get names of fields (bits, errs, etc.)
+    data = { }
+    current_key = ""
+    while idx < N_LINES and not("polarity = " in file[idx] or file[idx].replace('-', '') == '\n'):
+        if "LINETEST IN" in file[idx]: break
+        # while not end of file or next test
+        if not("PCMOUT BERT" in file[idx]):
+            if file[idx][0] == '-':             # (bits, errs, etc.)
+                current_key = file[idx].replace('-', '').strip()
+                data[current_key] = []
+            else:
+                data[current_key].append(file[idx].strip())
         nextline()
-        i += 1
-    nextline()
 
-        # errs
-    i = 0
-    while file[idx][0] != '-' and i < N_CH:
-        pcmout_bert[keys[i]].append([bits[i], file[idx].strip()])
-        nextline()
-        i += 1
-    nextline()
+    
+    # determine which channels have test values
+    if channels == "even":
+        n_ch = int(N_CH/2)
+        i, x = 0, 2
+    elif channels == "odd":
+        n_ch = int(N_CH/2)
+        i, x = 1, 2
+    else:
+        n_ch = N_CH
+        i, x = 0, 1
+
+    # add to dict
+    data_keys = list(data)
+    d_idx = len(pcmout_bert[keys[0]])
+    for j in range(len(pcmout_bert)):           # new data list
+        pcmout_bert[keys[j]].append([])
+
+    for j in range(len(data)):      # for each data field
+        # for 12 channels
+        if len(data[data_keys[j]]) == N_CH:
+            for k in range(N_CH):
+                pcmout_bert[keys[k]][d_idx].append(data[data_keys[j]][k])
+        # for < 12 channels
+        else:
+            for k in range(n_ch):
+                pcmout_bert[keys[i]][d_idx].append(data[data_keys[j]][k])
+        i += x
 
 
 
@@ -127,6 +156,10 @@ def get_linetest(channels="all"):
     while file[idx][0] == '-': nextline()
     keys = list(linetest_in)
     nextline(-1)
+
+    # if theres no LINETEST for this test
+    if not("LINETEST IN" in file[idx-1]):
+        return
 
     # get data
     data = { }
@@ -231,6 +264,7 @@ if __name__ == "__main__":
         # get parameters
         d = build_test_dict(get_params())           # test parameters
 
+        # if theres extra stuff after first test params
         nextline(2)
         if file[idx].split()[0].replace(',', '') != d["test name"]:
             s = ""
@@ -259,33 +293,30 @@ if __name__ == "__main__":
 
             # get data
             while idx < N_LINES and file[idx].replace('-', '') != n:
-                # pcmout bert
-                get_pcmout_bert()
-                # linetest in
                 if params["test name"][:10] == "bert_test_" and params["test name"][-1] == 'r':
-                    get_linetest("odd")
+                    get_pcmout_bert("odd")      # pcmout bert
+                    get_linetest("odd")         # linetest in
                 elif params["test name"][:10] == "bert_test_":
-                    get_linetest("even")
+                    get_pcmout_bert("even")      # pcmout bert
+                    get_linetest("even")         # linetest in
                 else:
-                    get_linetest("all")
+                    get_pcmout_bert("all")      # pcmout bert
+                    get_linetest("all")         # linetest in
 
             # create test class
             tst = Test(params, pcmout_bert, linetest_in)
             tests.append(tst)             # add test info for this rate to list for this name
-            
-            # write to output report file
-            write_params(tests[0].parameters)
-            write_output(tests[0])
 
             if not(eof()):
                 testname = file[idx+1].split()[0].replace(',', '')
                 if testname != params["test name"]:
                     pcmout_bert, linetest_in = { }, { }
                     break
+        
+        # write to output report file
+        write_params(tests[0].parameters)
+        write_output(tests[0])
 
-    
-    
 
     output.close()
     
-
