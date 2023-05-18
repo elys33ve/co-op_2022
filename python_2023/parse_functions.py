@@ -83,7 +83,10 @@ class Channel (object):
             for i in range(len(self.bits)):
                 bits += int(self.bits[i])
                 errs += int(self.errs[i])
-        file.write(f"\t\tpcmout_bert: {bits} bits / {errs} errs\n")
+        if bits == '--' and errs == '--':
+            file.write(f"\t\tpcmout_bert: -- \n")
+        else:
+            file.write(f"\t\tpcmout_bert: {bits} bits / {errs} errs\n")
 
         # linetest bits / errs
         bits, errs = '--', '--'
@@ -97,14 +100,15 @@ class Channel (object):
         # linetest sync
         sync = '--'
         if not(self.empty(self.sync)):
-            sync = "all sync"
+            sync = "pass"
             for i in range(len(self.sync)):
                 if self.sync[i] != "sync":
-                    sync = "weewooweewoo not sync"
+                    sync = "fail"
             
-        if len(self.inv) > 0: inv = self.inv[0]
-        else: inv = "--"
-        file.write(f"\t\tlineteset_in: {bits} bits / {errs} errs, {inv}\n")
+        if bits == '--' and errs == '--':
+            file.write(f"\t\tlinetest_in: -- \n")
+        else:
+            file.write(f"\t\tlinetest_in: {bits} bits / {errs} errs, sync: {sync}\n")
 
     def check_pcmins(self, polarities):
         # pcmin (pcmout)
@@ -128,10 +132,14 @@ class Channel (object):
                     return False
         return True
 
-    def x(self):
-        if len(self.inv) > 0:
-            return self.inv[0]
-        else: return '---'
+    def sync_pass(self):
+        # linetest sync
+        if not(self.empty(self.sync)):
+            for i in range(len(self.sync)):
+                if self.sync[i] != "sync":
+                    return False
+            return True
+
 
 
 # Test for each data rate 
@@ -181,8 +189,30 @@ class Test (object):
         return passes
     
     def inv_test(self):
-        print(" " + self.channels[0].inv[0])
+        for i in range(self.channels):
+            return
+        
+    def check_all(self):
+        pcmin, bits, errs, sync = 0, 0, 0, 0
+
+        # pcmin polarity
+        pol = self.pol_test_list()
+        for i in range(len(pol)):
+            if pol[i] != True:
+                pcmin = 1
+        
+        # bits
+        if self.bit_pass() == False:
+            bits = 1
+        # errs
+        if self.err_pass() == False:
+            errs = 1
+
+        # sync
+        for i in range(len(self.channels)):
+            if self.channels[i].sync_pass() == False:
+                sync = 1
+
+        return [bits, errs, pcmin, sync]
+
                 
-    
-
-
