@@ -1,5 +1,5 @@
 # generate report from test data file
-from parse_functions import *
+from functions import *
 
 filename = "report_5_10_2023.txt"           # testfile
 #filename = "test_input.txt"
@@ -10,27 +10,26 @@ output = open(filename, 'w')
 ######################################### --- globals
 N_CH = 12           # number of channels
 N_LINES = len(file)
+
 idx = 0
 
 date = ""
 
-tests = []
-pcmout_bert = { }
-linetest_in = { }
+tests = { }     # { test_name:{ data_rate:[ Channel, Channel, ... ], ... }, ... } 
+Tests = []      # [Test1_50M, Test1_45M, ... , Test2_50M, Test2_45M, ...]
 
-separate = "-------------------------------------------------\n"
 t, n = '\t', '\n'
 #########################################
 """ notes and things:
 bert_test_8 linetest_in results are for even numbered channels
 bert_test_8r linetest_in results are for odd numbered channels
-
-
 """
 
-def nextline(i=1):
+
+def nextline(i=1, j=0):
     global idx
-    idx += i
+    if j != 0: idx = j
+    else: idx += i
 
 def eof():
     if idx < N_LINES:
@@ -38,213 +37,224 @@ def eof():
     else:
         return True
 
+def dashed(s):
+    s = s.strip()
+    for i in s:
+        if i != '-':
+            return False
+    return True
 
 
-### get test header and parameters
+
+def start_idx():
+    starts, names = [], []
+    for i in range(N_LINES-1):
+        if dashed(file[i]) and ("auto polarity" in file[i+1] and "data polarity" in file[i+1]):
+            testname = file[i+1].strip().split()[0].replace(',', '')
+            if testname not in names:
+                names.append(testname)
+                starts.append(i+1)
+    return starts  
+
+def rate_idx():
+    rates = []
+    for i in range(N_LINES):
+        if "rate = " in file[i] and file[i].split()[2].strip().isnumeric():
+            rates.append(i)
+    return rates
+
+
+
+
+
+def output_tests():
+    test_names = list(tests)
+    for i in range(len(tests)):
+        tst = tests[test_names[i]]
+        output.write("------- " + test_names[i] + " -------\n")
+        for j in range(len(tst)):
+            output.write("--- " + tst[j][0].rate + n)
+            for k in range(len(tst[j])):
+                tst[j][k].write_out(output)
+            output.write("\n")
+    output.close()
+
+
+
+
+
 def get_params():
-    while file[idx][0] == '-': nextline()
-    line = file[idx].split()
-    test_name = line[0].replace(',', '')        # test name
+    line = file[idx]
+    name = line.split()[0].strip().replace(',', '')            # name
 
-    i = 0
-    while line[i] != "auto": i += 1
-    auto_polarity = line[i+2].replace(',', '')  # auto polarity
-
-    i = 0
-    while line[i] != "data": i += 1
-    data_polarity = line[i+2]                   # data polarity
+    auto_pol, data_pol = "--", "--"
+    if "auto polarity" in line:
+        x = line.index("auto polarity")
+        auto_pol = line[x+14:x+17].replace(',', '')         # auto polarity
+    if "data polarity" in line:
+        x = line.index("data polarity")
+        data_pol = line[x+14:x+17].replace(',', '')         # data polarity
 
     nextline()
-    if file[idx][:4] == "rate":
-        data_rate = file[idx].split()[2].strip()        # data rate
-        if data_rate.isnumeric():
-            data_rate = str(int(int(data_rate)/1000000)) + 'M'
-    nextline()
+    rate = file[idx].split()[2].strip()                     # rate
 
-    return [test_name, auto_polarity, data_polarity, data_rate]
-    
+    return Parameters(name, auto_pol, data_pol, rate)
 
 
 
+def add_to(obj, key, val, ltst=0):
+    # pcmout bert
+    if key == "bits" and ltst == 0:
+        obj.bits.append(val)
+    elif key == "errs" and ltst == 0:
+        obj.errs.append(val)
+    elif key == "pcmin clock polarity" and ltst == 0:
+        obj.pcmin.append(val)
+    elif key == "polarity changes" and ltst == 0:
+        obj.changes.append(val)
+    # linetest
+    elif key == "bits":
+        obj.l_bits.append(val)
+    elif key == "errs":
+        obj.l_errs.append(val)
+    elif key == "sync":
+        obj.sync.append(val)
+    elif key == "inv":
+        obj.inv.append(val)
+    elif key == "pcmin clock polarity":
+        obj.l_pcmin.append(val)
+    elif key == "polarity changes":
+        obj.l_changes.append(val)
 
-### create new pcmout_bert dictionary
-def make_pcmout_bert():
-    global pcmout_bert
+# add values to every other channel
+# (list of channel class instances, key, value list, even (0) or odd (1), linetest)
+def ch_r(channels, key, val_list, odd=0, ltst=0):
+    for i in range(len(val_list)):
+        add_to(channels[odd], key, val_list[i], ltst)
+        odd += 2
+
+
+def create_channels(rate):
+    channels = []
     for i in range(N_CH):
-        pcmout_bert[f"ch{i}"] = []
+        channels.append(Channel(i, rate))
+    return channels
 
 
-### get channel bits and errs from pcmout bert
-### { "ch0":[ [bits, errs], [bits, errs], ... ], "ch1":... }
-def get_pcmout_bert(channels="all"):
-    global pcmout_bert
-    # create if dict is empty
-    if len(pcmout_bert) == 0:
-        make_pcmout_bert()
 
+def get_pcmout_bert(channels, i, odd=0):
+    nextline(j=i)
 
-    # get values for channels
-    while file[idx][0] == '-': nextline()
-    keys = list(pcmout_bert)
-    nextline(-1)
-
-    # get names of fields (bits, errs, etc.)
-    data = { }
-    current_key = ""
-    while idx < N_LINES and not("polarity = " in file[idx] or file[idx].replace('-', '') == '\n'):
-        if "LINETEST IN" in file[idx]: break
-        # while not end of file or next test
-        if not("PCMOUT BERT" in file[idx]):
-            if file[idx][0] == '-':             # (bits, errs, etc.)
-                current_key = file[idx].replace('-', '').strip()
-                data[current_key] = []
-            else:
-                data[current_key].append(file[idx].strip())
+    # store data
+    # sets = [ {"bits":[...], "errs":[...], ...}, ... ]
+    data, sets, key = { }, [], ""
+    while not (eof() or dashed(file[idx])):
+        while not(eof() or dashed(file[idx]) or "PCMOUT BERT" in file[idx]): nextline()
         nextline()
+        while not (eof() or dashed(file[idx]) or "LINETEST IN" in file[idx] or "polarity = " in file[idx]):
+            # find keys/field names ("bits", "errs", etc.)
+            key = file[idx].strip().replace('-', '')
+            data[key] = []
+            nextline()
+            
+            # get data
+            while file[idx][0] != '-':
+                data[key].append(file[idx].strip())
+                nextline()
+        # store dict in list for that test set
+        sets.append(data)
+        data = { }
+    if len(sets) == 0: return       # if something dumb occured and data empty
+    # delete unneccessary items in list
+    t = []
+    for i in range(len(sets)):
+        if not(len(sets[i]) == 0 or type(sets[i]) == list or list(sets[i])[0] != 'bits'):    
+            t.append(sets[i])
+    sets = t
 
+
+    # store in class instance
+    keys = list(sets[0])
     
-    # determine which channels have test values
-    if channels == "even":
-        n_ch = int(N_CH/2)
-        i, x = 0, 2
-    elif channels == "odd":
-        n_ch = int(N_CH/2)
-        i, x = 1, 2
-    else:
-        n_ch = N_CH
-        i, x = 0, 1
-
-    # add to dict
-    data_keys = list(data)
-    d_idx = len(pcmout_bert[keys[0]])
-    for j in range(len(pcmout_bert)):           # new data list
-        pcmout_bert[keys[j]].append([])
-
-    for j in range(len(data)):      # for each data field
-        # for 12 channels
-        if len(data[data_keys[j]]) == N_CH:
-            for k in range(N_CH):
-                pcmout_bert[keys[k]][d_idx].append(data[data_keys[j]][k])
-        # for < 12 channels
-        else:
-            for k in range(n_ch):
-                pcmout_bert[keys[i]][d_idx].append(data[data_keys[j]][k])
-        i += x
+    for s in range(len(sets)):
+        data = sets[s]
+        for d in range(len(data)):
+            if len(data[keys[d]]) == N_CH:       # if 12 values
+                for ch in range(N_CH):
+                    add_to(channels[ch], keys[d], data[keys[d]][ch], ltst=0)
+            else:                       # lest than 12 (alternate channels)
+                ch_r(channels, keys[d], data[keys[d]], odd=odd, ltst=0)
 
 
 
 
 
 
-### create new linetest_in dictionary
-def make_linetest_in():
-    global linetest_in
-    for i in range(N_CH):
-        linetest_in[f"ch{i}"] = []
 
+def get_linetest_in(channels, i, odd=0):
+    nextline(j=i)
 
-### get values for linetest in
-### { "ch0":[ bits, errs, sync, inv, pcmin, pol_changes ], ... }
-def get_linetest(channels="all"):
-    global linetest_in
-    # create if dict is empty
-    if len(linetest_in) == 0:
-        make_linetest_in()
-
-
-    # get values for channels
-    while file[idx][0] == '-': nextline()
-    keys = list(linetest_in)
-    nextline(-1)
-
-    # if theres no LINETEST for this test
-    if not("LINETEST IN" in file[idx-1]):
-        return
-
-    # get data
-    data = { }
-    current_key = ""
-    while idx < N_LINES and not("polarity = " in file[idx] or file[idx].replace('-', '') == '\n'):
-        # while not end of file or next test
-        if not("LINETEST" in file[idx]):
-            if file[idx][0] == '-':             # data type (bits, errs, etc.)
-                current_key = file[idx].replace('-', '').strip()
-                data[current_key] = []
-            else:
-                data[current_key].append(file[idx].strip())
+    # store data
+    # sets = [ {"bits":[...], "errs":[...], ...}, ... ]
+    data, sets, key = { }, [], ""
+    while not (eof() or dashed(file[idx])):
+        while not(eof() or dashed(file[idx]) or "LINETEST IN" in file[idx]): nextline()
         nextline()
+        while not (eof() or dashed(file[idx]) or "polarity = " in file[idx]):
+            # find keys/field names ("bits", "errs", etc.)
+            key = file[idx].strip().replace('-', '')
+            data[key] = []
+            nextline()
+            
+            # get data
+            while file[idx][0] != '-':
+                data[key].append(file[idx].strip())
+                nextline()
+        # store dict in list for that test set
+        sets.append(data)
+        data = { }
+    if len(sets) == 0: return       # if something dumb occured and data empty
+    # delete unneccessary items in list
+    t = []
+    for i in range(len(sets)):
+        if not(len(sets[i]) == 0 or type(sets[i]) == list or list(sets[i])[0] != 'bits'):    
+            t.append(sets[i])
+    sets = t
     
-    # determine which channels have test values
-    if channels == "even":
-        n_ch = int(N_CH/2)
-        i, x = 0, 2
-    elif channels == "odd":
-        n_ch = int(N_CH/2)
-        i, x = 1, 2
-    else:
-        n_ch = N_CH
-        i, x = 0, 1
+    
+    # store in class instance
+    keys = list(sets[0])
+    for s in range(len(sets)):
+        data = sets[s]
+        for d in range(len(data)):
+            if len(data[keys[d]]) == N_CH:       # if 12 values
+                for ch in range(N_CH):
+                    add_to(channels[ch], keys[d], data[keys[d]][ch], ltst=1)
+            else:                       # lest than 12 (alternate channels)
+                ch_r(channels, keys[d], data[keys[d]], odd=odd, ltst=1)
 
-    # add to dict
-    data_keys = list(data)
-    for j in range(n_ch):
-        ch_data = []
-        for k in range(len(data)):       # get data for each channel
-            ch_data.append(data[data_keys[k]][j])
-        linetest_in[keys[i]].append(ch_data)
-        i += x
 
+
+
+
+def get_polarity():
+    pol, p = [], []
+    for i in range(N_LINES):
+        # get polarities and add to list
+        if "polarity = " in file[i]:
+            p.append(file[i].replace('-','').replace('polarity = ','').strip())
+            if p[-1].isnumeric(): p[-1] = int(p[-1])
+        elif "rate = " in file[i] and len(p) > 0:
+            pol.append(p)
+            p = []
+
+    return pol
+
+        
     
 
-
-
-### write parameters of individual test
-def write_params(params):
-    keys = list(params)
-    output.write(params[keys[0]] + n)       # test name
-    output.write(keys[1] + ' ' + params[keys[1]] + ', ')    # auto and data polarity
-    output.write(keys[2] + ' ' + params[keys[2]] + n)
-    output.write("rate = " + params[keys[3]] + n + n)
-
-
-
-
-
-### write to file
-def write_output(test):
-    """
-    Wed Aug 10 01:58:25 UTC 2022
-    -------------------------------------------------
-    bert_test_8
-    auto polarity on, data polarity 0
-    data rate = 50M
-    -------------------------------------------------
-    ch0
-        pcmout_bert:  bits / errs
-        linetest_in:  bits / errs, sync pass/fail, clock polarity pass/fail
-    ch1
-        ...
-    """
-    for i in range(N_CH):
-        output.write(f"ch{i}\n")
-
-        pcmout = test.ch_info(i)["pcmout_bert"]
-        output.write(t + "pcmout_bert: ")
-        output.write(pcmout[0] + " bits / " + pcmout[1] + " errs\n")
-
-        linetest = test.ch_info(i)["linetest_in"]
-        output.write(t + "linetest_in: ")
-        output.write(linetest[0] + " bits / " + linetest[1] + " errs, ")
-        output.write("sync " + linetest[2] + ", ")
-        output.write("polarity changes = " + str(linetest[3]) + n)
-
-
-
-
-
-
-
-
+        
+    
 
 
 
@@ -256,67 +266,100 @@ if __name__ == "__main__":
     # get date
     while file[idx][0] == '-': nextline()
     date = file[idx].strip()
-    output.write(date + n + separate)       # write date to file
     nextline()
 
 
-    while idx < N_LINES:
-        # get parameters
-        d = build_test_dict(get_params())           # test parameters
+    # get start of each new test
+    starts = start_idx()
+    rates = rate_idx()
+    r_idx = 0
 
-        # if theres extra stuff after first test params
-        nextline(2)
-        if file[idx].split()[0].replace(',', '') != d["test name"]:
-            s = ""
-            while file[idx][0] != '-':
-                s += file[idx]
-                nextline()
-            d["other stuff"] = s
 
-        print(d["test name"]+ " " + str(idx))
-    
-        # for all tests in a test name
-        tests = []
-        while idx < N_LINES:
-            # get parameters
-            params = build_test_dict(get_params())          # test parameters 1
+    # get data
+    for i in range(len(starts)):
+        idx = starts[i]
 
-            # get polarity
-            polarity = ''
-            while file[idx][0] == '-':
-                line = file[idx].split()
-                if line[0][-8:] == "polarity":
-                    polarity = line[2][0]
-                    break
-                nextline()
-            nextline()
+        # get Parameters
+        params = get_params()
+        name = params.test_name
 
-            # get data
-            while idx < N_LINES and file[idx].replace('-', '') != n:
-                if params["test name"][:10] == "bert_test_" and params["test name"][-1] == 'r':
-                    get_pcmout_bert("odd")      # pcmout bert
-                    get_linetest("odd")         # linetest in
-                elif params["test name"][:10] == "bert_test_":
-                    get_pcmout_bert("even")      # pcmout bert
-                    get_linetest("even")         # linetest in
-                else:
-                    get_pcmout_bert("all")      # pcmout bert
-                    get_linetest("all")         # linetest in
+        # check for pcmout
+        jdx = idx
+        pc_bool = False
+        while not(jdx >= N_LINES or r_idx >= len(rates) or jdx >= rates[r_idx+1]):
+            if "PCMOUT BERT" in file[jdx]:
+                pc_bool = True
+                break
+            jdx += 1
 
-            # create test class
-            tst = Test(params, pcmout_bert, linetest_in)
-            tests.append(tst)             # add test info for this rate to list for this name
 
-            if not(eof()):
-                testname = file[idx+1].split()[0].replace(',', '')
-                if testname != params["test name"]:
-                    pcmout_bert, linetest_in = { }, { }
-                    break
+        # check for linetest
+        jdx = idx
+        ltst_bool = False
+        while not(jdx >= N_LINES or r_idx >= len(rates) or jdx >= rates[r_idx+1]):
+            if "LINETEST IN" in file[jdx]:
+                ltst_bool = True
+                break
+            jdx += 1
+
+
+        # get test data
+        tests[name] = []
+        while not(eof() or r_idx >= len(rates) or idx >= rates[r_idx]):
+            nextline(j=rates[r_idx])
+            # get rate
+            rate = file[idx].split()[2].strip()                     
+            if rate.isnumeric() and int(rate) > 1000000: 
+                rate = str(int(int(rate) / 1000000)) + 'M'
+                
+
+            # create new list of channel class isntances
+            channels = create_channels(rate)
+
+            # get even/odd alternating
+            odd = 0
+            if name[-1] == 'r':
+                odd = 1
+
+            # actually get the values
+            if pc_bool == True:
+                get_pcmout_bert(channels, starts[i]+5, odd)     # pcmout bert
+            if ltst_bool == True:
+                get_linetest_in(channels, starts[i]+4, odd)     # linetest in   
+              
+
+            # add to tests
+            tests[name].append(channels)
+
+            test_obj = Test(rate, channels)
+            Tests.append(test_obj)
+
+
+            # check if next test
+            r_idx += 1  
+            if i+1 >= len(starts) or rates[r_idx] >= starts[i+1]:
+                break 
+
+
         
-        # write to output report file
-        write_params(tests[0].parameters)
-        write_output(tests[0])
 
-
-    output.close()
     
+    # print stuff
+    output_tests()
+
+
+    # get test fail/pass
+    # { test_name:{ [ Channel, Channel, ... ], [ ... ], ... }, ... } 
+    test_keys = list(tests)
+    polarities = get_polarity()
+    
+    
+
+            
+    for i in range(len(Tests)):
+        Tests[i].polarities = polarities[i]
+        
+        #print(Tests[i].pol_test())
+ 
+
+
