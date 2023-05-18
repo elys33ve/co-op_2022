@@ -1,5 +1,5 @@
 # generate report from test data file
-from functions import *
+from parse_functions import *
 
 filename = "report_5_10_2023.txt"           # testfile
 #filename = "test_input.txt"
@@ -15,8 +15,10 @@ idx = 0
 
 date = ""
 
-tests = { }     # { test_name:{ data_rate:[ Channel, Channel, ... ], ... }, ... } 
-Tests = []      # [Test1_50M, Test1_45M, ... , Test2_50M, Test2_45M, ...]
+tests = []      # { [ [ Channel, Channel, ... ], ... ], ... ]
+Tests = []      # [ Test1_50M, Test1_45M, ... , Test2_50M, Test2_45M, ...]
+test_params = []
+
 
 t, n = '\t', '\n'
 #########################################
@@ -48,10 +50,12 @@ def dashed(s):
 # get indexs with "auto polarity" and "data polarity" for parameter lines
 def start_idx():
     starts, names = [], []
+    prev_name = ""
     for i in range(N_LINES-1):
         if dashed(file[i]) and ("auto polarity" in file[i+1] and "data polarity" in file[i+1]):
             testname = file[i+1].strip().split()[0].replace(',', '')
-            if testname not in names:
+            if testname != prev_name:
+                prev_name = testname
                 names.append(testname)
                 starts.append(i+1)
     starts.append(N_LINES-1)
@@ -71,15 +75,29 @@ def rate_idx():
 
 # output test results to report file
 def output_tests():
-    test_names = list(tests)
+    t = test_params[0].test_name
+    test_names = [t]
+    for i in range(len(test_params)):
+        if test_params[i].test_name != t:
+            t = test_params[i].test_name
+            test_names.append(t)
+
     for i in range(len(tests)):
-        tst = tests[test_names[i]]
+        tst = tests[i]
         output.write("------- " + test_names[i] + " -------\n")
         for j in range(len(tst)):
             output.write("--- " + tst[j][0].rate + n)
             for k in range(len(tst[j])):
                 tst[j][k].write_out(output)
             output.write("\n")
+
+    output.write("\n---------------------------------------------------------------------\n")
+    output.write("issues:\n\n")
+
+    x = find_issues()
+    #passes = ["bits", "errs", "clock polarity", "sync"]
+    
+    output.write(x[0])
     output.close()
 
 
@@ -99,7 +117,7 @@ def get_params():
 
     nextline()
     rate = file[idx].split()[2].strip()                     # rate
-    if rate.isnumeric() and int(rate) > 1000000: 
+    if rate.isnumeric() and int(rate) >= 1000000: 
         rate = str(int(int(rate) / 1000000)) + 'M'
 
     return Parameters(name, auto_pol, data_pol, rate)
@@ -166,6 +184,11 @@ def create_channels(rate):
 def get_pcmout_bert(channels, i, odd=0):
     nextline(j=i)
 
+    # if theres a comment line kinda thing
+    if file[idx] != file[idx-4]:
+        while not(eof() or "polarity = " in file[idx]): nextline()
+        
+
     # store data
     # sets = [ {"bits":[...], "errs":[...], ...}, ... ]
     data, sets, key = { }, [], ""
@@ -212,6 +235,10 @@ def get_pcmout_bert(channels, i, odd=0):
 def get_linetest_in(channels, i, odd=0):
     nextline(j=i)
 
+    # if theres a comment line kinda thing
+    if file[idx] != file[idx-4]:
+        while not(eof() or "polarity = " in file[idx]): nextline()
+
     # store data
     # sets = [ {"bits":[...], "errs":[...], ...}, ... ]
     data, sets, key = { }, [], ""
@@ -228,9 +255,11 @@ def get_linetest_in(channels, i, odd=0):
             while file[idx][0] != '-':
                 data[key].append(file[idx].strip())
                 nextline()
+            
         # store dict in list for that test set
         sets.append(data)
         data = { }
+
     if len(sets) == 0: return       # if something dumb occured and data empty
     # delete unneccessary items in list
     t = []
@@ -253,7 +282,45 @@ def get_linetest_in(channels, i, odd=0):
 
 
    
-    
+# find issues
+def find_issues():
+    return_string = ""
+    lt = len(Tests)
+    tname, issues = "", [[], [], [], []]
+    bits, errs, clk, sync = 0, 0, 0, 0
+    errors = ""
+    issues_str = ["bits <= 0: ", "errs > 0: ", "clock polarity issue: ", "sync fail: "] 
+    for i in range(lt):
+        # test end
+        name = Tests[i].params.test_name
+        if tname != name:
+            tname = name
+
+            for j in range(len(issues)):
+                if issues[j] != []:
+                    return_string += name +'\n\t' 
+                    return_string += issues_str[j] + str(issues[j]) + '\n'
+                    errors += issues_str[j]
+
+            issues = [[],[],[],[]]
+
+        # check
+        x = Tests[i].check_all()
+        for j in range(len(x)):
+            if x[j] != 0:
+                issues[j].append(Tests[i].params.rate)
+
+    if "bits" in errors:
+        bits = 1
+    if "errs" in errors:
+        errs = 1
+    if "clock" in errors:
+        clk = 1
+    if "sync" in errors:
+        sync = 1
+
+    return return_string, [bits, errs, clk, sync]
+          
 
 
 
@@ -269,6 +336,10 @@ if __name__ == "__main__":
     rates = rate_idx()
     r_idx = 0
 
+
+    # default lists
+    for i in range(len(starts)-1):
+        tests.append([])
     test_params = []
 
 
@@ -289,7 +360,6 @@ if __name__ == "__main__":
                 break
             jdx += 1
 
-
         # check for linetest
         jdx = idx
         ltst_bool = False
@@ -301,7 +371,6 @@ if __name__ == "__main__":
 
 
         # get test data
-        tests[name] = []
         while not(eof() or r_idx >= len(rates) or idx >= rates[r_idx]):
             # get parameters
             nextline(j=rates[r_idx]-1)
@@ -326,54 +395,49 @@ if __name__ == "__main__":
               
 
             # add to tests
-            tests[name].append(channels)
+            tests[i].append(channels)
 
             
             # check if next test
             r_idx += 1  
             if i+1 >= len(starts) or rates[r_idx] >= starts[i+1]:
-                break 
-        
+                break
 
-    
+
+    # get test fail/pass
+    polarities = get_polarity()
+    Tests, p = [], 0
+    lt = len(tests)
+
+    for i in range(lt):
+        t = tests[i]
+        for j in range(len(t)):
+            Tests.append(Test(test_params[p], t[j]))
+            # add polarities
+            if len(polarities) < p:
+                Tests[p].polarities = polarities[p] 
+            else:
+                Tests[p].polarities = polarities[len(polarities)-1]
+            p += 1
+
+
     # print stuff
     output_tests()
 
 
-    # get test fail/pass
-    # { test_name:{ [ Channel, Channel, ... ], [ ... ], ... }, ... } 
-    tkeys = list(tests)
-    polarities = get_polarity()
-    Tests, p = [], 0
-
-    for i in range(len(tests)):
-        t = tests[tkeys[i]]
-        for j in range(len(t)):
-            Tests.append(Test(test_params[p], t[j]))
-            p += 1
-
-
-    for i in range(len(tests)):
-        tk = tkeys[i]
-        tn = tests[tk]
-
-        r = []
-        for j in range(len(tn)):
-            r.append(tn[j][0].rate)
-
-        print(f"{tk} {r}")
-
-
-
-
 
     """
-   
-    print(len(Tests))
-
+    # print test_name: [rates]
+    rates, tname = [], Tests[0].params.test_name
     for i in range(len(Tests)):
-        print(Tests[i].params.test_name+' '+Tests[i].params.rate)
-        print(Tests[i].channels[0].x())
-            
+        name = Tests[i].params.test_name
+        if tname != name:
+            print(f"{name}: {rates}")
+            tname, rates = name, []
+        
+        rate = Tests[i].params.rate
+        rates.append(rate)
     """
+
     
+        
