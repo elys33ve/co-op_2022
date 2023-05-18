@@ -1,85 +1,17 @@
 N_CH = 12           # number of channels
 
 
-### dictionary for parameters
-def build_test_dict(name, auto=0, data=0, rate=0):
-    # if given list
-    if type(name) == list:
-        rate, data, auto = name[3], name[2], name[1], 
-        name = name[0]
-
-    # create dictionary
-    new_dict = {}
-    new_dict["test name"] = name
-    new_dict["auto polarity"] = auto
-    new_dict["data polarity"] = data
-    new_dict["data rate"] = rate
-    return new_dict
 
 
-
-### just prints values of any dictionary w keys
+# just prints values of any dictionary w keys
 def print_dict(dictionary):
     keys = list(dictionary)
     for i in range(len(keys)):
         print(f"{keys[i]}: {dictionary[keys[i]]}")
 
-
-
-
-
-class Test (object):
-    def __init__ (self, parameters, pcmout={}, linetest={}):
-        self.parameters = parameters
-        # { "test name":<>, "auto polarity":<>, "data polarity":<>, "data rate":<> }
-        self.pcmout_bert = pcmout
-        # { "ch0":[ [bits, errs], [bits, errs], ... ], "ch1":... }
-        self.linetest_in = linetest
-        # { "ch0":[ bits, errs, sync, inv, pcmin, pol_changes ], ... }
-
-
-    def ch_dict(self, ch):
-        if ch >= len(self.pcmout_bert): return { }
-        ch = f"ch{ch}"
-
-        return { "pcmout_bert":[self.pcmout_bert[ch]], "linetest_in":[self.linetest_in[ch]] }
-
-
-    def ch_info(self, ch):
-        if ch >= len(self.pcmout_bert): return { }
-        ch = f"ch{ch}"
-
-        # pcmout_bert: total bits / total errs
-        total_bits, total_errs = 0, 0
-        for i in range(len(self.pcmout_bert[ch])):
-            total_bits += int(self.pcmout_bert[ch][i]["bits"])
-            total_errs += int(self.pcmout_bert[ch][i]["errs"])
-        pcmout = [str(total_bits), str(total_errs)]
-
-        # linetest
-        if len(self.linetest_in) == 0: return { "pcmout_bert":pcmout }  # if no linetest
-        total_bits, total_errs = 0, 0
-        sync_fail, polarity_changes = 0, []
-        for i in range(len(self.linetest_in[ch])):
-            # bits and errs
-            total_bits += int(self.linetest_in[ch][i]["bits"])
-            total_errs += int(self.linetest_in[ch][i]["errs"])
-            # sync
-            if self.linetest_in[ch][i][2] != "sync":
-                sync_fail += 1
-            # polarity changes
-            polarity_changes.append(self.linetest_in[ch][i][4])
-        if sync_fail > 0: 
-            sync_fail = "fail"
-        else:
-            sync_fail = "pass"
-        linetest = [str(total_bits), str(total_errs), sync_fail, polarity_changes]
-
-        return { "pcmout_bert":pcmout, "linetest_in":linetest}
-
         
 
-
+# parameters (test name, auto & data polarity, data rate)
 class Parameters (object):
     def __init__ (self, test_name="", auto_pol="", data_pol="", rate="", other=""):
         self.test_name = test_name
@@ -91,7 +23,7 @@ class Parameters (object):
 
 
 
-
+# channel class, holds pcmout bert and linetest in data
 class Channel (object):
     def __init__ (self, n, r):
         self.channel_number = n
@@ -169,54 +101,88 @@ class Channel (object):
             for i in range(len(self.sync)):
                 if self.sync[i] != "sync":
                     sync = "weewooweewoo not sync"
-        file.write(f"\t\tlineteset_in: {bits} bits / {errs} errs, {sync}\n")
+            
+        if len(self.inv) > 0: inv = self.inv[0]
+        else: inv = "--"
+        file.write(f"\t\tlineteset_in: {bits} bits / {errs} errs, {inv}\n")
 
     def check_pcmins(self, polarities):
-        fail = False
         # pcmin (pcmout)
         if len(self.pcmin) > 0:
             for i in range(len(self.pcmin)):
                 # pass: polarity=1, falling edge
                 if "falling" in self.pcmin[i] and polarities[i] != 1:
-                    fail = True
-                    break
+                    return False
                 # pass: polarity=0, rising edge
                 if "rising" in self.pcmin[i] and polarities[i] != 0:
-                    fail = True
-                    break
+                    return False
         
         # pcmin (linetest)
         if len(self.l_pcmin) > 0:
             for i in range(len(self.l_pcmin)):
                 # pass: polarity=1, falling edge
                 if "falling" in self.l_pcmin[i] and polarities[i] != 1:
-                    fail = True
-                    break
+                    return False
                 # pass: polarity=0, rising edge
                 if "rising" in self.l_pcmin[i] and polarities[i] != 0:
-                    fail = True
-                    break
-        return fail
+                    return False
+        return True
+
+    def x(self):
+        if len(self.inv) > 0:
+            return self.inv[0]
+        else: return '---'
 
 
-
-
+# Test for each data rate 
 class Test (object):
-    def __init__ (self, data_rate, channels):
-        self.data_rate = data_rate
+    def __init__ (self, params, channels):
+        self.params = params
         self.channels = channels
-        self.data_polarity = -1
         self.polarities = []
-    
-    def pol_test(self, polarities=[]):
+
+    # returns True bits > 0
+    def bit_pass(self):
+        for i in range(len(self.channels)):
+            ch = self.channels[i]
+            
+            # pcmout bits
+            for j in range(len(ch.bits)):
+                if int(ch.bits[j]) <= 0:
+                    return False
+            # linetest bits
+            for j in range(len(ch.l_bits)):
+                if int(ch.l_bits[j]) <= 0:
+                    return False
+        return True
+                
+    # returns True if errs = 0
+    def err_pass(self):
+        for i in range(len(self.channels)):
+            ch = self.channels[i]
+
+            # pcmout errs
+            for j in range(len(ch.errs)):
+                if int(ch.errs[j]) != 0:
+                    return False
+            # linetest bits
+            for j in range(len(ch.l_errs)):
+                if int(ch.l_errs[j]) != 0:
+                    return False
+        return True
+             
+    # return list of bools for pcmin fail (True), pass (False) 
+    def pol_test_list(self, polarities=[]):
         if len(polarities) <= 0: polarities = self.polarities
         if len(polarities) > 0:
-            fails = []
+            passes = []
             for i in range(len(self.channels)):
-                fails.append(self.channels[i].check_pcmins(polarities))
-        return fails
+                passes.append(self.channels[i].check_pcmins(polarities))
+        return passes
     
     def inv_test(self):
-        return
+        print(" " + self.channels[0].inv[0])
                 
     
+
+
