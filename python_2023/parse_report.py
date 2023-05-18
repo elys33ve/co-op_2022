@@ -45,7 +45,7 @@ def dashed(s):
     return True
 
 
-
+# get indexs with "auto polarity" and "data polarity" for parameter lines
 def start_idx():
     starts, names = [], []
     for i in range(N_LINES-1):
@@ -54,19 +54,22 @@ def start_idx():
             if testname not in names:
                 names.append(testname)
                 starts.append(i+1)
+    starts.append(N_LINES-1)
     return starts  
 
+# get list of indexs with "rate = " for test start/ends
 def rate_idx():
     rates = []
     for i in range(N_LINES):
         if "rate = " in file[i] and file[i].split()[2].strip().isnumeric():
             rates.append(i)
+    rates.append(N_LINES-1)
     return rates
 
 
 
 
-
+# output test results to report file
 def output_tests():
     test_names = list(tests)
     for i in range(len(tests)):
@@ -81,12 +84,11 @@ def output_tests():
 
 
 
-
-
+# get parameters (test name, auto polarity, data polarity, data rate)
 def get_params():
     line = file[idx]
     name = line.split()[0].strip().replace(',', '')            # name
-
+    
     auto_pol, data_pol = "--", "--"
     if "auto polarity" in line:
         x = line.index("auto polarity")
@@ -97,11 +99,30 @@ def get_params():
 
     nextline()
     rate = file[idx].split()[2].strip()                     # rate
+    if rate.isnumeric() and int(rate) > 1000000: 
+        rate = str(int(int(rate) / 1000000)) + 'M'
 
     return Parameters(name, auto_pol, data_pol, rate)
 
 
 
+# get list of polarities
+def get_polarity():
+    pol, p = [], []
+    for i in range(N_LINES):
+        # get polarities and add to list
+        if "polarity = " in file[i]:
+            p.append(file[i].replace('-','').replace('polarity = ','').strip())
+            if p[-1].isnumeric(): p[-1] = int(p[-1])
+        elif "rate = " in file[i] and len(p) > 0:
+            pol.append(p)
+            p = []
+
+    return pol
+
+
+
+# add data to member of channels obj
 def add_to(obj, key, val, ltst=0):
     # pcmout bert
     if key == "bits" and ltst == 0:
@@ -127,13 +148,12 @@ def add_to(obj, key, val, ltst=0):
         obj.l_changes.append(val)
 
 # add values to every other channel
-# (list of channel class instances, key, value list, even (0) or odd (1), linetest)
 def ch_r(channels, key, val_list, odd=0, ltst=0):
     for i in range(len(val_list)):
         add_to(channels[odd], key, val_list[i], ltst)
         odd += 2
 
-
+# create and return list of channel class instances
 def create_channels(rate):
     channels = []
     for i in range(N_CH):
@@ -142,6 +162,7 @@ def create_channels(rate):
 
 
 
+# pcmout bert
 def get_pcmout_bert(channels, i, odd=0):
     nextline(j=i)
 
@@ -187,10 +208,7 @@ def get_pcmout_bert(channels, i, odd=0):
 
 
 
-
-
-
-
+# linetest in
 def get_linetest_in(channels, i, odd=0):
     nextline(j=i)
 
@@ -234,31 +252,8 @@ def get_linetest_in(channels, i, odd=0):
                 ch_r(channels, keys[d], data[keys[d]], odd=odd, ltst=1)
 
 
-
-
-
-def get_polarity():
-    pol, p = [], []
-    for i in range(N_LINES):
-        # get polarities and add to list
-        if "polarity = " in file[i]:
-            p.append(file[i].replace('-','').replace('polarity = ','').strip())
-            if p[-1].isnumeric(): p[-1] = int(p[-1])
-        elif "rate = " in file[i] and len(p) > 0:
-            pol.append(p)
-            p = []
-
-    return pol
-
-        
+   
     
-
-        
-    
-
-
-
-
 
 
 
@@ -274,9 +269,11 @@ if __name__ == "__main__":
     rates = rate_idx()
     r_idx = 0
 
+    test_params = []
+
 
     # get data
-    for i in range(len(starts)):
+    for i in range(len(starts)-1):
         idx = starts[i]
 
         # get Parameters
@@ -306,11 +303,11 @@ if __name__ == "__main__":
         # get test data
         tests[name] = []
         while not(eof() or r_idx >= len(rates) or idx >= rates[r_idx]):
-            nextline(j=rates[r_idx])
-            # get rate
-            rate = file[idx].split()[2].strip()                     
-            if rate.isnumeric() and int(rate) > 1000000: 
-                rate = str(int(int(rate) / 1000000)) + 'M'
+            # get parameters
+            nextline(j=rates[r_idx]-1)
+            p = get_params()
+            test_params.append(p)
+            rate = p.rate
                 
 
             # create new list of channel class isntances
@@ -331,16 +328,11 @@ if __name__ == "__main__":
             # add to tests
             tests[name].append(channels)
 
-            test_obj = Test(rate, channels)
-            Tests.append(test_obj)
-
-
+            
             # check if next test
             r_idx += 1  
             if i+1 >= len(starts) or rates[r_idx] >= starts[i+1]:
                 break 
-
-
         
 
     
@@ -350,16 +342,38 @@ if __name__ == "__main__":
 
     # get test fail/pass
     # { test_name:{ [ Channel, Channel, ... ], [ ... ], ... }, ... } 
-    test_keys = list(tests)
+    tkeys = list(tests)
     polarities = get_polarity()
-    
-    
+    Tests, p = [], 0
 
-            
+    for i in range(len(tests)):
+        t = tests[tkeys[i]]
+        for j in range(len(t)):
+            Tests.append(Test(test_params[p], t[j]))
+            p += 1
+
+
+    for i in range(len(tests)):
+        tk = tkeys[i]
+        tn = tests[tk]
+
+        r = []
+        for j in range(len(tn)):
+            r.append(tn[j][0].rate)
+
+        print(f"{tk} {r}")
+
+
+
+
+
+    """
+   
+    print(len(Tests))
+
     for i in range(len(Tests)):
-        Tests[i].polarities = polarities[i]
-        
-        #print(Tests[i].pol_test())
- 
-
-
+        print(Tests[i].params.test_name+' '+Tests[i].params.rate)
+        print(Tests[i].channels[0].x())
+            
+    """
+    
